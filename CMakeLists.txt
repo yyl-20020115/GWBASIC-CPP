@@ -14,9 +14,11 @@ add_executable(GWBASIC
     array.h
     paslib.h
     GWBASIC.h
+    conio2.h
     set.c
     cio.c
     paslib.c
+    conio.c
     GWBASIC.cxx
     UTILS.cxx
 )

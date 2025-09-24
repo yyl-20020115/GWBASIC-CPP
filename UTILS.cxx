@@ -16,30 +16,11 @@ size_t length(string& s) {
 void flush() {
 
 }
-byte wherey() {
-	return y;
-}
-byte wherex() {
-	return x;
-}
 void window(byte x, byte y, byte w, byte h) {
 	//NOTICE:
 }
-void gotoxy(byte _x, byte _y) {
-	x = _x;
-	y = _y;
-}
-void clreol() {
-	//NOTICE:
-}
-void textcolor(byte color) {
-	fc = color;
-}
 void textbackground(byte color) {
 	bc = color;
-}
-void clrscr() {
-	//NOTICE:
 }
 void getdir(int i, string& s) {
 	//NOTICE:

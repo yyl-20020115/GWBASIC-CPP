@@ -1233,13 +1233,13 @@ void delay(unsigned msec)
 }
     
 
-int kbhit()
+int __kbhit()
 {
     while (handle_input(false));
     return !kbd_queue.is_empty();
 }
 
-int getch()
+int __getch()
 {
     while (kbd_queue.is_empty()) handle_input(true);
     return (unsigned char)kbd_queue.get();

@@ -245,8 +245,8 @@ void setvisualpage(int);
 void setwritemode(int);
 int textheight(char const*);
 int textwidth(char const*);
-int getch(void);
-int kbhit(void);		
+int __getch(void);
+int __kbhit(void);		
 void delay(int msec);
 #ifdef __cplusplus
 };

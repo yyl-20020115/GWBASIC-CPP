@@ -4,10 +4,11 @@
 #include "cio.h"
 #include "array.h"
 #include "set.h"
-#include "graph.h"
 #include "paslib.h"
 #include <stdio.h>
 #include <io.h>
+#include "conio2.h"
+#include "graph.h"
 
 #define low(x) (0)
 #define high(x) (x.size()-1)
@@ -21,14 +22,8 @@
 size_t length(string& s);
 
 void flush();
-byte wherey();
-byte wherex();
 void window(byte x, byte y, byte w, byte h);
-void gotoxy(byte x, byte y);
-void clreol();
-void textcolor(byte color);
 void textbackground(byte color);
-void clrscr();
 void getdir(int i, string& s);
 float frac(float v);
 void sound(int f);
