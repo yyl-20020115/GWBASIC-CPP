@@ -1,0 +1,3292 @@
+#include "GWBASIC.h"
+
+/* @author: Sylvain Maltais (support@gladir.com)
+  @created: 2022
+  @website(https://www.gladir.com/gwbasic-0)
+  @abstract(Target: Turbo Pascal, Free Pascal)
+*/
+
+
+
+/*#include "Crt.h"*/
+/*#include "DOS.h"*/
+/*#include "PtcGraph.h"*/
+/*#include "PtcCrt.h"*/
+/*#include "PtcMouse.h"*/
+/*#include "Printer.h"*/
+/*#include "Crt.h"*/
+/*#include "DOS.h"*/
+/*#include "Graph.h"*/
+/*#include "Printer.h"*/
+
+
+const char version[] = "0.73";
+
+const array<0,91,varying_string<12> > commandlist = {{
+ "AND","AUTO","BEEP","BLOAD","BSAVE","CALL","CAT","CHAIN","CHDIR",
+ "CIRCLE","CLEAR","CLOSE","CLR","CLS","COLOR","COM","COMMON","CONT",
+ "DATA","DEF","DELETE","DIM","DRAW","EDIT","ELSE","END","ERASE","ERROR",
+ "FIELD","FILES","FOR","GET","GOSUB","GOTO","HELP","IF","INPUT","KEY",
+ "KILL","LET","LINE","LIST","LLIST","LOAD","LOCATE","LPRINT",
+ "LSET","MERGE","MKDIR","NAME","NEW","NEXT","ON","OPEN","OPTION",
+ "OR","OUT","PAINT","PALETTE","POKE","PLAY","PRESET","PRINT",
+ "PSET","PUT","RANDOMIZE","READ","REM","RENUM","RESET","RESUME",
+ "RESTORE","RETURN","RMDIR","RSET","RUN","SAVE","SCREEN","SHELL","SLEEP",
+ "STOP","SYSTEM","THEN","TROFF","TRON","VIEW","WAIT","WEND","WHILE",
+ "WIDTH","WINDOW","WRITE"
+}};
+
+const array<0,53,varying_string<12> > functionlist = {{
+ "ABS","ASC","ATN","CHR$","CINT","CSNG","CSRLIN","COS","CVD","CVI",
+ "CVS","DATE$","EOF","ERL","ERR","EXP","FIX","FRE","INKEY$","INP",
+ "INPUT$","INSTR","INT","LEFT$","LEN","LOF","LOG","LPOS","LTRIM$",
+ "MID$","OCT$","PEEK","PLAY","PMAP","POS","RIGHT$","RND","RTRIM$",
+ "SCREEN","SGN","SIN","SQR","STR$","STRIG","STRING$","TAN","TAB",
+ "TIME$","TIMER","TRIM$","USR","VAL","VARPTR","VARPTR$"
+}};
+
+const integer maxline = 1024;
+const integer maxvariable = 100;
+
+enum vartypeenum {_none,_integer,_longint,_real,_string, last_vartypeenum};
+typedef string* strpointer;
+struct varrec {
+ struct { union {
+  integer i;
+  longint l;
+  real r;
+  strpointer s;
+          };
+ } variant;
+ vartypeenum vartype;
+ varying_string<20> varname;
+};
+typedef varrec* varpointer;
+struct gosubstackrec {
+ word line,col;
+ integer linenumber;
+};
+struct forstackrec {
+ word line,col;
+ integer linenumber;
+ varying_string<20> varname;
+};
+
+boolean terminated,tron,keyfunction;
+string currcommand;
+string filename,currline;
+byte currpos;
+array<1,maxline,strpointer> pa;
+integer currlineptr,numberline;
+integer currnumberline;
+array<1,maxvariable,varpointer> varlist;
+integer i,numbervariable;
+array<1,10,varying_string<15> > functionkeylist;
+array<1,10,gosubstackrec> gosubstack;
+byte gosubpos;
+array<1,10,forstackrec> forstack;
+byte forpos;
+word autolines,incrauto;
+boolean isauto,isedit;
+boolean lineempty,ingraph;
+
+boolean runbasic(boolean inlist);
+void newcommand();
+
+real tan(real x){
+ real tan_result;
+ if (cos(x)==0.0) tan_result=0.0;
+              else tan_result=sin(x)/cos(x);
+ return tan_result;
+                }
+
+real log1(real x)
+{
+ boolean negatif;
+ integer fois,i;
+ real ajout,savx,xp,quotient,dl;
+
+ real log1_result;
+ negatif = false;
+ fois = 1;
+ ajout = 0;
+ if (x <= 0.0)  {
+  log1_result=0;
+  return log1_result;
+ }
+ if (x < 1.0)  {
+  negatif = true;
+  x = 1.0 / x;
+ }
+ while (x >= 10.0)  {
+  x = x / 10.0;
+  ajout = ajout + 2.302585092994046;
+ }
+ while (x >= 1.1)  {
+  x = sqrt(x);
+  fois = fois * 2;
+ }
+ x = x - 1;
+ savx = x;
+ i = 2;
+ xp = x * x;
+ quotient = (xp / i);
+ dl = x - quotient;
+ while (1.0E-15 < quotient)  {
+  i = i + 1;
+  xp = xp * x;
+  dl = dl + (xp / i);
+  i = i + 1;
+  xp = xp * x;
+  quotient = (xp / i);
+  dl = dl - quotient;
+ }
+ dl = dl * fois;
+ dl = dl + ajout;
+ if(negatif) dl = - dl;
+ log1_result=dl;
+ return log1_result;
+}
+
+real power(real base,real p){
+ real power_result;
+ power_result=exp(p*log1(base));
+ return power_result;
+                            }
+
+boolean isnumberword(string s)
+{
+ integer i;
+
+ boolean isnumberword_result;
+ isnumberword_result=true;
+ for( i=1; i <= length(s);i ++) {
+  if (!(set::of(range('0','9'), eos).has(s[i]))) {
+   isnumberword_result=false;
+   return isnumberword_result;
+  }
+ }
+ return isnumberword_result;
+}
+
+string inttostr(integer i)
+{
+ string s;
+
+ string inttostr_result;
+ str(i,s);
+ inttostr_result=s;
+ return inttostr_result;
+}
+
+string ltrim(string s)
+{
+ integer i;
+
+ string ltrim_result;
+ i=1;
+ while((i<=length(s)) && (set::of('\11',' ', eos).has(s[i])))  i += 1;
+ Delete(s,1,i-1);
+ ltrim_result=s;
+ return ltrim_result;
+}
+
+string rtrim(string s)
+{
+ integer i;
+
+ string rtrim_result;
+ i=length(s);
+ while ((i>0)&&(set::of('\11',' ', eos).has(s[i]))) i -= 1;
+ s[0]=chr(i);
+ rtrim_result=s;
+ return rtrim_result;
+}
+
+string trim(string s){
+ string trim_result;
+ trim_result=ltrim(rtrim(s));
+ return trim_result;
+                     }
+
+string padright(string s,byte space)
+{
+ byte i;
+
+ string padright_result;
+ if (length(s)<space)  for( i=length(s)+1; i <= space; i ++) s=s+' ';
+ padright_result=s;
+ return padright_result;
+}
+
+string strtoupper(string s)
+{
+ byte i;
+
+ string strtoupper_result;
+ for( i=1; i <= length(s);i ++) {
+  if (set::of(range('a','z'), eos).has(s[i])) s[i]=chr(ord(s[i])-32);
+ }
+ strtoupper_result=s;
+ return strtoupper_result;
+}
+
+char getcurrentdisk()
+{
+ string currentdir;
+
+ char getcurrentdisk_result;
+ getdir(0,currentdir);
+ getcurrentdisk_result=currentdir[1];
+ return getcurrentdisk_result;
+}
+
+string geterrormessage(word code){
+ string geterrormessage_result;
+ switch (code) {
+        case 0:geterrormessage_result = ""; break; 
+        case 2:geterrormessage_result = "File not found"; break; 
+        case 3:geterrormessage_result = "Path not found"; break; 
+        case 4:geterrormessage_result = "Too many files open"; break; 
+        case 5:geterrormessage_result = "Access denied"; break; 
+        case 6:geterrormessage_result = "Invalid file handle"; break; 
+        case 12:geterrormessage_result = "Invalid disk access mode"; break; 
+        case 15:geterrormessage_result = "Invalid disk number"; break; 
+        case 16:geterrormessage_result = "Unable to delete directory"; break; 
+        case 17:geterrormessage_result = "Unable to rename across multiple volumes"; break; 
+        case 100:geterrormessage_result = "Error reading from disk"; break; 
+        case 101:geterrormessage_result = "Disk write error"; break; 
+        case 102:geterrormessage_result = "Unassigned file"; break; 
+        case 103:geterrormessage_result = "The file is not open"; break; 
+        case 104:geterrormessage_result = "The file is not open for input"; break; 
+        case 105:geterrormessage_result = "The file is not open for output"; break; 
+        case 106:geterrormessage_result = "Invalid number"; break; 
+        case 150:geterrormessage_result = "Write-protected disk"; break; 
+        case 151:geterrormessage_result = "Peripheral is unknown"; break; 
+        case 152:geterrormessage_result = "Disc not ready"; break; 
+        case 153:geterrormessage_result = "Unknown command"; break; 
+        case 154:geterrormessage_result = "CRC verification failure"; break; 
+        case 155:geterrormessage_result = "Invalid disk"; break; 
+        case 156:geterrormessage_result = "Disk seek error"; break; 
+        case 157:geterrormessage_result = "Invalid media type"; break; 
+        case 158:geterrormessage_result = "Sector not found"; break; 
+        case 159:geterrormessage_result = "The printer is out of paper"; break; 
+        case 160:geterrormessage_result = "Write error on device"; break; 
+        case 161:geterrormessage_result = "Read error on device"; break; 
+        case 162:geterrormessage_result = "Hardware failure"; break; 
+        default: geterrormessage_result = "Unknown error";
+ }
+ return geterrormessage_result;
+                                 }
+
+void showfunctionkey()
+{
+ byte i,j,oldy;
+ string temp;
+
+ oldy=wherey;
+ window(1,1,80,25);
+ gotoxy(1,25);
+ clreol;
+ if(keyfunction) {
+  for( i=1; i <= 10; i ++) {
+   textcolor(7);
+   textbackground(0);
+   output << i % 10;
+   textcolor(0);
+   textbackground(7);
+   temp="";
+   for( j=1; j <= length(functionkeylist[i]);j ++) {
+    if (functionkeylist[i][j]!='\15') temp=temp+functionkeylist[i][j];
+   }
+   output << temp;
+   textcolor(7);
+   textbackground(0);
+   if (i<10)  {
+    if (length(temp)<7)  output << format(' ',7-length(temp));
+   }
+  }
+ }
+ window(1,1,80,24);
+ gotoxy(1,oldy);
+}
+
+void homemessage(){
+ clrscr;
+ showfunctionkey();
+ window(1,1,80,24);
+ output << "GW-BASIC Clone " << version << NL;
+ output << "MIT Free and Open Source License 2021, 2022, 2024" << NL;
+                  }
+
+byte extractcommand()
+{
+ byte i;
+
+ byte extractcommand_result;
+ extractcommand_result=255;
+ currcommand="";
+ if((currpos<=length(currline))&&(currline[currpos]=='?')) {
+  currcommand="PRINT";
+  currpos += 1;
+ }
+  else
+ for( i=currpos; i <= length(currline);i ++) {
+  if (!(set::of(range('A','Z'),range('a','z'),'$','%','!','#', eos).has(currline[i]))) {
+   currcommand=strtoupper(copy(currline,currpos,i-currpos));
+   currpos=i;
+   flush();
+  }
+ }
+ if (currcommand=="") {
+  currcommand=strtoupper(copy(currline,currpos,255));
+  currpos=length(currline)+1;
+ }
+ for( i=low(commandlist);i <= high(commandlist);i ++) {
+  if (currcommand==commandlist[i]) {
+   extractcommand_result=i;
+   return extractcommand_result;
+  }
+ }
+ return extractcommand_result;
+}
+
+ /* Processing variables */
+boolean variableexist(string s)
+{
+ integer i;
+
+ boolean variableexist_result;
+ variableexist_result=false;
+ for( i=1; i <= numbervariable; i ++) if(strtoupper(s)==varlist[i]->varname) {
+  variableexist_result=true;
+  return variableexist_result;
+ }
+ return variableexist_result;
+}
+
+vartypeenum variabletype(string s)
+{
+ integer i;
+
+ vartypeenum variabletype_result;
+ variabletype_result=_none;
+ for( i=1; i <= numbervariable; i ++) if(strtoupper(s)==varlist[i]->varname) {
+  variabletype_result=varlist[i]->vartype;
+  return variabletype_result;
+ }
+ return variabletype_result;
+}
+
+boolean addvariableint(string s,integer value)
+{
+ varpointer p;
+
+ boolean addvariableint_result;
+ if (numbervariable>=maxvariable)  {
+  addvariableint_result=false;
+  return addvariableint_result;
+ }
+ numbervariable += 1;
+ getmem(p,sizeof(varrec));
+ p->varname=copy(strtoupper(s),1,20);
+ p->vartype=_integer;
+ p->variant.i=value;
+ varlist[numbervariable]=p;
+ addvariableint_result=true;
+ return addvariableint_result;
+}
+
+integer getvariableint(string s)
+{
+ integer i;
+
+ integer getvariableint_result;
+ getvariableint_result=0;
+ for( i=1; i <= numbervariable; i ++) if(strtoupper(s)==varlist[i]->varname) {
+  getvariableint_result=varlist[i]->variant.i;
+  return getvariableint_result;
+ }
+ return getvariableint_result;
+}
+
+void setvariableint(string s,integer value)
+{
+ integer i;
+
+ for( i=1; i <= numbervariable; i ++) if(s==varlist[i]->varname) {
+  varlist[i]->variant.i=value;
+  varlist[i]->vartype=_integer;
+  return;
+ }
+}
+
+boolean addvariablelongint(string s,longint value)
+{
+ varpointer p;
+
+ boolean addvariablelongint_result;
+ if (numbervariable>=maxvariable)  {
+  addvariablelongint_result=false;
+  return addvariablelongint_result;
+ }
+ numbervariable += 1;
+ getmem(p,sizeof(varrec));
+ p->varname=copy(strtoupper(s),1,20);
+ p->vartype=_longint;
+ p->variant.l=value;
+ varlist[numbervariable]=p;
+ addvariablelongint_result=true;
+ return addvariablelongint_result;
+}
+
+longint getvariablelongint(string s)
+{
+ integer i;
+
+ longint getvariablelongint_result;
+ getvariablelongint_result=0;
+ for( i=1; i <= numbervariable; i ++) if(strtoupper(s)==varlist[i]->varname) {
+  getvariablelongint_result=varlist[i]->variant.l;
+  return getvariablelongint_result;
+ }
+ return getvariablelongint_result;
+}
+
+void setvariablelongint(string s,longint value)
+{
+ integer i;
+
+ for( i=1; i <= numbervariable; i ++) if(s==varlist[i]->varname) {
+  varlist[i]->variant.l=value;
+  varlist[i]->vartype=_longint;
+  return;
+ }
+}
+
+boolean addvariablereal(string s,real value)
+{
+ varpointer p;
+
+ boolean addvariablereal_result;
+ if (numbervariable>=maxvariable)  {
+  addvariablereal_result=false;
+  return addvariablereal_result;
+ }
+ numbervariable += 1;
+ getmem(p,sizeof(varrec));
+ p->varname=copy(strtoupper(s),1,20);
+ p->vartype=_real;
+ p->variant.r=value;
+ varlist[numbervariable]=p;
+ addvariablereal_result=true;
+ return addvariablereal_result;
+}
+
+real getvariablereal(string s)
+{
+ integer i;
+
+ real getvariablereal_result;
+ getvariablereal_result=0;
+ for( i=1; i <= numbervariable; i ++) if(strtoupper(s)==varlist[i]->varname) {
+  getvariablereal_result=varlist[i]->variant.r;
+  return getvariablereal_result;
+ }
+ return getvariablereal_result;
+}
+
+void setvariablereal(string s,real value)
+{
+ integer i;
+
+ for( i=1; i <= numbervariable; i ++) if(s==varlist[i]->varname) {
+  varlist[i]->variant.r=value;
+  varlist[i]->vartype=_real;
+  return;
+ }
+}
+
+boolean addvariablestring(string s,string value)
+{
+ varpointer p;
+ strpointer ps;
+
+ boolean addvariablestring_result;
+ if (numbervariable>=maxvariable)  {
+  addvariablestring_result=false;
+  return addvariablestring_result;
+ }
+ numbervariable += 1;
+ getmem(p,sizeof(varrec));
+ p->varname=copy(strtoupper(s),1,20);
+ p->vartype=_string;
+ getmem(ps,sizeof(_string));
+ *ps=value;
+ p->variant.s=ps;
+ varlist[numbervariable]=p;
+ addvariablestring_result=true;
+ return addvariablestring_result;
+}
+
+string getvariablestring(string s)
+{
+ integer i;
+
+ string getvariablestring_result;
+ getvariablestring_result="";
+ for( i=1; i <= numbervariable; i ++) if(strtoupper(s)==varlist[i]->varname) {
+  getvariablestring_result=*varlist[i]->variant.s;
+  return getvariablestring_result;
+ }
+ return getvariablestring_result;
+}
+
+void setvariablestring(string s,string value)
+{
+ integer i;
+
+ for( i=1; i <= numbervariable; i ++) if(s==varlist[i]->varname) {
+  *varlist[i]->variant.s=value;
+  varlist[i]->vartype=_string;
+  return;
+ }
+}
+
+void clearvariable()
+{
+ integer i;
+
+ if (numbervariable>0)  {
+  for( i=1; i <= numbervariable; i ++) {
+   freemem(varlist[i],sizeof(varrec));
+  }
+ }
+ numbervariable=0;
+}
+
+ /* List processing */
+boolean addline(string s)
+{
+ strpointer p;
+
+ boolean addline_result;
+ if (numberline>=maxline)  {
+  addline_result=false;
+  return addline_result;
+ }
+ numberline += 1;
+ getmem(p,length(s)+1);
+ *p=s;
+ pa[numberline]=p;
+ addline_result=true;
+ return addline_result;
+}
+
+integer firstnumberinstr(string s)
+{
+ integer j,number,err;
+
+ integer firstnumberinstr_result;
+ firstnumberinstr_result=0;
+ j=1;
+ while(j<length(s)) {
+  if (!(set::of(range('0','9'), eos).has(s[j]))) {
+   val(copy(s,1,j-1),number,err);
+   firstnumberinstr_result=number;
+   flush();
+  }
+  j += 1;
+ }
+ return firstnumberinstr_result;
+}
+
+void quicksort(word left,word right)
+{
+ word lower,upper,middle;
+ string pivot,t;
+ strpointer temp;
+
+ lower=left;
+ upper=right;
+ middle=(cardinal)(left+right) >> 1;
+ pivot=*pa[middle];
+ do {
+  while (firstnumberinstr(*pa[lower]) < firstnumberinstr(pivot))  lower += 1;
+  while (firstnumberinstr(pivot) < firstnumberinstr(*pa[upper]))  upper -= 1;
+  if(lower<=upper) {
+   temp=pa[lower];
+   pa[lower]=pa[upper];
+   pa[upper]=temp;
+   lower += 1;
+   upper -= 1;
+  }
+ } while (!(lower>upper));
+ if (left<upper)  quicksort(left,upper);
+ if (lower<right)  quicksort(lower,right);
+}
+
+void resortlist(){
+ if (numberline>1)  quicksort(1,numberline);
+                 }
+
+void deletelinenumber(word number)
+{
+ longint thisnumber;
+ integer i;
+
+ for( i=1; i <= numberline; i ++) {
+  thisnumber=firstnumberinstr(*pa[i]);
+  if (thisnumber>0)  {
+   if(thisnumber==number) {
+    *pa[i]="";
+    resortlist();
+    return;
+   }
+  }
+ }
+}
+
+/*Expression evaluation (Infix to PostFix)*/
+array<0,100,char> stack;
+byte topofstack;
+array<0,100,real> resultstack;
+byte topofstackint;
+
+void stackpushchar(char c){
+ if (topofstack>=high(stack)) {
+  output << "Stack full!" << NL;
+  exit(0);
+ }
+  else
+ {
+  stack[topofstack]=c;
+  topofstack += 1;
+ }
+                          }
+
+string stackpop()
+{
+ string s;
+ word err;
+
+ string stackpop_result;
+ topofstack -= 1;
+ if (topofstack<1) {
+  stackpop_result="";
+  output << "Stack empty!" << NL;
+  exit(0);
+ }
+  else
+ stackpop_result=stack[topofstack];
+ return stackpop_result;
+}
+
+char stackpeek(){
+ char stackpeek_result;
+ stackpeek_result=stack[topofstack-1];
+ return stackpeek_result;
+                }
+
+void resultstackpush(real c){
+ if (topofstackint>=high(resultstack)) {
+  output << "Stack full!" << NL;
+  exit(0);
+ }
+  else
+ {
+  resultstack[topofstackint]=c;
+  topofstackint += 1;
+ }
+                            }
+
+real resultstackpop(){
+ real resultstackpop_result;
+ topofstackint -= 1;
+ if (topofstackint<1) {
+  resultstackpop_result=-1.0;
+  output << "Stack empty!" << NL;
+  return resultstackpop_result;
+ }
+  else
+ resultstackpop_result=resultstack[topofstackint];
+ return resultstackpop_result;
+                     }
+
+
+void skipspace(){
+ while((set::of(' ', eos).has(currline[currpos]))&&(currpos<length(currline))) currpos += 1;
+                }
+
+char getseparator(){
+ char getseparator_result;
+ if (currpos>length(currline)) {
+  getseparator_result='\0';
+  return getseparator_result;
+ }
+ skipspace();
+ getseparator_result=currline[currpos];
+ return getseparator_result;
+                   }
+
+boolean isstringvalue()
+{
+ byte i;
+
+ boolean isstringvalue_result;
+ isstringvalue_result=false;
+ if (currline[currpos]=='"') {
+  isstringvalue_result=true;
+ }
+  else
+ {
+  i=currpos;
+  while((set::of(' ', eos).has(currline[i]))&&(i<length(currline))) i += 1;
+  if (set::of(range('A','Z'),range('a','z'), eos).has(currline[i])) {
+   i += 1;
+   while (i<length(currline)) {
+    if (!(set::of(range('A','Z'),range('a','z'),range('0','9'), eos).has(currline[i]))) flush();
+    i += 1;
+   }
+   if((i<=length(currline))&&(currline[i]=='$')) isstringvalue_result=true;
+  }
+ }
+ return isstringvalue_result;
+}
+
+string getvariablename()
+{
+ string s;
+
+ string getvariablename_result;
+ s="";
+ if (set::of(range('A','Z'),range('a','z'), eos).has(currline[currpos])) {
+  s=s+currline[currpos];
+  currpos += 1;
+  while (currpos<length(currline)) {
+   if (!(set::of(range('A','Z'),range('a','z'),range('0','9'), eos).has(currline[currpos]))) flush();
+   s=s+currline[currpos];
+   currpos += 1;
+  }
+ }
+ getvariablename_result=strtoupper(s);
+ return getvariablename_result;
+}
+
+integer readinteger()
+{
+ string s;
+ integer number;
+ word err;
+
+ integer readinteger_result;
+ s="";
+ if (set::of(range('0','9'), eos).has(currline[currpos])) {
+  s=s+currline[currpos];
+  currpos += 1;
+  while (currpos<=length(currline)) {
+   if (!(set::of(range('0','9'), eos).has(currline[currpos]))) flush();
+   s=s+currline[currpos];
+   currpos += 1;
+  }
+ }
+ val(s,number,err);
+ if (err>0)  number=-1;
+ readinteger_result=number;
+ return readinteger_result;
+}
+
+string readword()
+{
+ string s;
+
+ string readword_result;
+ s="";
+ if (set::of(range('A','Z'),range('a','z'), eos).has(currline[currpos])) {
+  s=s+currline[currpos];
+  currpos += 1;
+  while (currpos<length(currline)) {
+   if (!(set::of(range('A','Z'),range('a','z'),range('0','9'), eos).has(currline[currpos]))) flush();
+   s=s+currline[currpos];
+   currpos += 1;
+  }
+ }
+ readword_result=strtoupper(s);
+ return readword_result;
+}
+
+string readwordstring()
+{
+ string s;
+
+ string readwordstring_result;
+ s="";
+ if (set::of(range('A','Z'),range('a','z'), eos).has(currline[currpos])) {
+  s=s+currline[currpos];
+  currpos += 1;
+  while (currpos<length(currline)) {
+   if (!(set::of(range('A','Z'),range('a','z'),range('0','9'), eos).has(currline[currpos]))) flush();
+   s=s+currline[currpos];
+   currpos += 1;
+  }
+  if (currline[currpos]=='$') {
+   s=s+'$';
+   currpos += 1;
+  }
+ }
+ readwordstring_result=strtoupper(s);
+ return readwordstring_result;
+}
+
+real getnumbervalue(integer mintopofstack);
+
+string getstringvalue()
+
+{
+ integer j;
+ real _result;
+ boolean functionfound;
+ string s,varname;
+
+ string getstringvalue_result;
+ getstringvalue_result="";
+ s="";
+Lrestart:
+ if (currline[currpos]=='"') {
+  currpos += 1;
+  while((currline[currpos]!='"')&&(currpos<=length(currline))) {
+   s=s+currline[currpos];
+   currpos += 1;
+  }
+  if (currline[currpos]=='"') currpos += 1;
+ }
+  else
+ {
+  varname=readwordstring();
+  skipspace();
+  functionfound=false;
+  for( j=low(functionlist);j <= high(functionlist);j ++) {
+   if (functionlist[j]==varname)  {
+    functionfound=true;
+    switch (j) {
+     case 3:{/*CHR$*/
+      if (currline[currpos]!='(') {
+       output << "\"(\" expected" << NL;
+       return getstringvalue_result;
+      }
+      currpos += 1;
+      _result=getnumbervalue(1);
+      if (currline[currpos]!=')') {
+       output << "\")\" expected" << NL;
+       return getstringvalue_result;
+      }
+      currpos += 1;
+      s=s+chr(byte(trunc(_result)));
+      getstringvalue_result=s;
+      flush();
+     }
+     break;
+     default: {
+      output << "Type incompatible" << NL;
+      return getstringvalue_result;
+     }
+    }
+   }
+  }
+  if (!(functionfound)) {
+   if (variableexist(varname)) {
+    s=s+getvariablestring(varname);
+   }
+  }
+ }
+ skipspace();
+ if (set::of('+',';', eos).has(currline[currpos])) {
+  currpos += 1;
+  goto Lrestart;
+ }
+ getstringvalue_result=s;
+ return getstringvalue_result;
+}
+
+real getnumbervalue(integer mintopofstack)
+{
+ byte i,j;
+ char top,p_2;
+ boolean appendok,functionfound;
+ real _result,p,p2;
+ word err;
+ string postfix;
+ string varname,value;
+ boolean exposant;
+ set stopchar;
+ string infix;
+
+ real getnumbervalue_result;
+ stopchar=set::of(',',':',';','"','<','=','>', eos);
+ topofstack=1;
+ topofstackint=1;
+ postfix="";
+ infix=currline;
+ i=currpos;
+ if (infix[currpos]=='-') {
+  insert("(0)",infix,currpos);
+  currpos -= 3;
+ }
+ do {
+  if((i<=length(infix))&&(set::of(range('A','Z'),range('a','z'), eos).has(infix[i]))) {
+   varname=infix[i];
+   i += 1;
+   while((i<=length(infix))&&(set::of(range('A','Z'),range('a','z'),'%','!','#', eos).has(infix[i]))) {
+    varname=varname+infix[i];
+    i += 1;
+   }
+   varname=strtoupper(varname);
+   if (variableexist(varname)) {
+    switch (variabletype(varname)){
+     case _integer:str(getvariableint(varname),value); break;
+     case _longint:str(getvariablelongint(varname),value); break;
+     case _real:str(getvariablereal(varname),value); break;
+     default: {
+      output << "Type incompatiable" << NL;
+      return getnumbervalue_result;
+     }
+    }
+   }
+    else
+   {     /* Function ?*/
+    functionfound=false;
+    for( j=low(functionlist);j <= high(functionlist);j ++) {
+     if (functionlist[j]==varname)  {
+      functionfound=true;
+      switch (j) {
+       case 0:{/*ABS*/
+        if (infix[i]!='(') {
+         output << "\"(\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+        currpos=i;
+        _result=getnumbervalue(topofstack);
+        if (frac(_result)==0.0)  str(trunc(_result),value);
+                             else str(_result,value);
+        i=currpos;
+        if (infix[i]!=')') {
+         output << "\")\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+       }
+       break;
+       case 1:{/*ASC*/
+        if (infix[i]!='(') {
+         output << "\"(\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+        currpos=i;
+        value=getstringvalue();
+        if (length(value)==0) _result=0.0;
+                          else _result=ord(value[1]);
+        str(_result,0,0,value);
+        i=currpos;
+        if (infix[i]!=')') {
+         output << "\")\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+       }
+       break;
+       case 2:{/*ATN*/
+        if (infix[i]!='(') {
+         output << "\"(\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+        currpos=i;
+        _result=getnumbervalue(topofstack);
+        str(atan(_result),value);
+        i=currpos;
+        if (infix[i]!=')') {
+         output << "\")\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+       }
+       break;
+       case 3:{/*CHR$*/
+        output << "Type incompatible" << NL;
+        return getnumbervalue_result;
+       }
+       break;
+       case 4:{;/*CINT*/
+       }
+       break;
+       case 5:{;/*CSNG*/
+       }
+       break;
+       case 6:{/*CSRLIN*/
+        str(wherey,value);
+       }
+       break;
+       case 7:{/*COS*/
+        if (infix[i]!='(') {
+         output << "\"(\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+        currpos=i;
+        _result=getnumbervalue(topofstack);
+        str(cos(_result),value);
+        i=currpos;
+        if (infix[i]!=')') {
+         output << "\")\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+       }
+       break;
+       case 8:{;/*CVD*/
+       }
+       break;
+       case 9:{;/*CVI*/
+       }
+       break;
+       case 10:{;/*CVS*/
+       }
+       break;
+       case 11:{;/*DATE$*/
+       }
+       break;
+       case 12:{;/*EOF*/
+       }
+       break;
+       case 13:{;/*ERL*/
+       }
+       break;
+       case 14:{;/*ERR*/
+       }
+       break;
+       case 15:{/*EXP*/
+        if (infix[i]!='(') {
+         output << "\"(\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+        currpos=i;
+        _result=getnumbervalue(topofstack);
+        str(exp(_result),value);
+        i=currpos;
+        if (infix[i]!=')') {
+         output << "\")\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+       }
+       break;
+       case 16:{/*FIX*/
+        if (infix[i]!='(') {
+         output << "\"(\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+        currpos=i;
+        _result=trunc(getnumbervalue(topofstack));
+        str(_result,0,0,value);
+        i=currpos;
+        if (infix[i]!=')') {
+         output << "\")\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+       }
+       break;
+       case 17:{;/*FRE*/
+       }
+       break;
+       case 18:{;/*INKEY$*/
+       }
+       break;
+       case 19:{;/*INP*/
+       }
+       break;
+       case 20:{;/*INPUT$*/
+       }
+       break;
+       case 21:{;/*INSTR*/
+       }
+       break;
+       case 22:{/*INT*/
+        if (infix[i]!='(') {
+         output << "\"(\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+        currpos=i;
+        _result=round(getnumbervalue(topofstack));
+        str(_result,0,0,value);
+        i=currpos;
+        if (infix[i]!=')') {
+         output << "\")\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+       }
+       break;
+       case 23:{;/*LEFT$*/
+       }
+       break;
+       case 24:{/*LEN*/
+        if (infix[i]!='(') {
+         output << "\"(\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+        currpos=i;
+        value=getstringvalue();
+        if (length(value)==0) _result=0.0;
+                          else _result=length(value);
+        str(_result,0,0,value);
+        i=currpos;
+        if (infix[i]!=')') {
+         output << "\")\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+       }
+       break;
+       case 25:{;/*LOF*/
+       }
+       break;
+       case 26:{/*LOG*/
+        if (infix[i]!='(') {
+         output << "\"(\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+        currpos=i;
+        _result=getnumbervalue(topofstack);
+        str(log(_result),value);
+        i=currpos;
+        if (infix[i]!=')') {
+         output << "\")\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+       }
+       break;
+       case 27:{;/*LPOS*/
+       }
+       break;
+       case 28:{;/*LTRIM$*/
+       }
+       break;
+       case 29:{;/*MID$*/
+       }
+       break;
+       case 30:{;/*OCT$*/
+       }
+       break;
+       case 31:{;/*PEEK*/
+       }
+       break;
+       case 32:{;/*PLAY*/
+       }
+       break;
+       case 33:{;/*PMAP*/
+       }
+       break;
+       case 34:{;/*POS*/
+       }
+       break;
+       case 35:{;/*RIGHT$*/
+       }
+       break;
+       case 36:{;/*RND*/
+       }
+       break;
+       case 37:{;/*RTRIM$*/
+       }
+       break;
+       case 38:{;/*SCREEN*/
+       }
+       break;
+       case 39:{;/*SGN*/
+       }
+       break;
+       case 40:{/*SIN*/
+        if (infix[i]!='(') {
+         output << "\"(\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+        currpos=i;
+        _result=getnumbervalue(topofstack);
+        str(sin(_result),value);
+        i=currpos;
+        if (infix[i]!=')') {
+         output << "\")\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+       }
+       break;
+       case 41:{/*SQR*/
+        if (infix[i]!='(') {
+         output << "\"(\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+        currpos=i;
+        _result=getnumbervalue(topofstack);
+        str(sqrt(_result),value);
+        i=currpos;
+        if (infix[i]!=')') {
+         output << "\")\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+       }
+       break;
+       case 42:{;/*STR$*/
+       }
+       break;
+       case 43:{;/*STRIG*/
+       }
+       break;
+       case 44:{;/*STRING$*/
+       }
+       break;
+       case 45:{/*TAN*/
+        if (infix[i]!='(') {
+         output << "\"(\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+        currpos=i;
+        _result=getnumbervalue(topofstack);
+        str(tan(_result),value);
+        i=currpos;
+        if (infix[i]!=')') {
+         output << "\")\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+       }
+       break;
+       case 46:{;/*TAB*/
+       }
+       break;
+       case 47:{;/*TIME$*/
+       }
+       break;
+       case 48:{;/*TIMER*/
+       }
+       break;
+       case 49:{;/*TRIM$*/
+       }
+       break;
+       case 50:{;/*USR*/
+       }
+       break;
+       case 51:{/*VAL*/
+        if (infix[i]!='(') {
+         output << "\"(\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+        currpos=i;
+        value=getstringvalue();
+        val(value,_result,err);
+        str(_result,value);
+        i=currpos;
+        if (infix[i]!=')') {
+         output << "\")\" expected" << NL;
+         return getnumbervalue_result;
+        }
+        i += 1;
+       }
+       break;
+       case 52:{;/*VARPTR*/
+       }
+       break;
+       case 53:{;/*VARPTR$*/
+       }
+       break;
+      }
+      flush();
+     }
+      else
+     {     /* Variable vide */
+      value='0';
+     }
+    }
+   }
+   postfix=postfix+'('+ltrim(value)+')';
+   if (i>length(infix)) flush();
+  }
+   else
+  if (set::of(range('0','9'), eos).has(infix[i])) {
+   value="";
+   exposant=false;
+   do {
+    if (set::of('E','e', eos).has(infix[i])) {
+     exposant=true;
+     value=value+infix[i];
+     i += 1;
+    }
+     else
+    if((exposant)&&(set::of('-','+', eos).has(infix[i]))) {
+     value=value+infix[i];
+     i += 1;
+    }
+     else
+    if (set::of(range('0','9'),'.', eos).has(infix[i])) {
+     value=value+infix[i];
+     i += 1;
+    }
+     else
+    flush();
+   } while (!(i>length(infix)));
+   postfix=postfix+'('+value+')';
+  }
+   else
+  if (infix[i]=='(') {
+   stackpushchar(infix[i]);
+   i += 1;
+  }
+   else
+  if (set::of('*','+','-','/','^', eos).has(infix[i])) {
+   while((topofstack>mintopofstack)&&(stackpeek() != '(')) {
+    top=stackpeek();
+    p_2=infix[i];
+    appendok=true;
+    if((top=='+')&&(set::of('*','^', eos).has(p_2))) appendok=false;
+    else if((set::of('*','^', eos).has(top))&&(p_2=='-')) appendok=true;
+    else if((top=='+')&&(p_2=='-')) appendok=true;
+    if(appendok) postfix=postfix+stackpop();
+                else flush();
+   }
+   stackpushchar(infix[i]);
+   i += 1;
+  }
+   else
+  if (infix[i]==')') {
+   if (topofstack<=mintopofstack)  {
+    flush();
+   }
+   while((topofstack>mintopofstack)&&(stackpeek()!='(')) postfix=postfix+stackpop();
+   if (topofstack>1) stackpop();
+   i += 1;
+  }
+   else
+  i += 1;
+  if(stopchar.has(infix[i])) flush();
+  if((strtoupper(copy(infix,i,4))=="THEN")||(strtoupper(copy(infix,i,2))=="TO")) flush();
+ } while (!(i>length(infix)));
+ currpos=i;
+ while(topofstack>mintopofstack) postfix=postfix+stackpop();
+  /* Transformation to POSTFIX */
+ i=1;
+ do {
+  if (set::of('*','+','-','/','^', eos).has(postfix[i])) {
+   p=resultstackpop();
+   p2=resultstackpop();
+   switch (postfix[i]){
+    case '+':_result=p2+p; break;
+    case '-':_result=p2-p; break;
+    case '*':_result=p2*p; break;
+    case '^':_result=power(p2,p); break;
+    case '/':_result=p2/p; break;
+    default: _result=-1;
+   }
+   resultstackpush(_result);
+  }
+   else
+  {
+   value="";
+   exposant=false;
+   do {
+    if (set::of(range('0','9'),'.', eos).has(postfix[i])) {
+     value=value+postfix[i];
+     i += 1;
+    }
+     else
+    if((value!="")&&(set::of('E','e', eos).has(postfix[i]))) {
+     exposant=true;
+     value=value+postfix[i];
+     i += 1;
+    }
+     else
+    if((value!="")&&(exposant)&&(set::of('+','-', eos).has(postfix[i]))) {
+     value=value+postfix[i];
+     i += 1;
+    }
+     else
+    flush();
+   } while (!(i>length(postfix)));
+   if (value!="") {
+    val(value,_result,err);
+    resultstackpush(_result);
+   }
+  }
+  i += 1;
+ } while (!(i>length(postfix)));
+ getnumbervalue_result=resultstackpop();
+ return getnumbervalue_result;
+}
+
+ /* DRAW */
+
+void basicdraw(string s);
+
+const integer draws = 4;
+
+const integer xl = 160;
+
+const integer yl = 100;
+
+
+static integer extractnm(string s, byte& i)
+{
+ string n;
+ integer a,b;
+
+ integer extractnm_result;
+ n="";
+ while((i<=length(s))&&(set::of(range('0','9'), eos).has(s[i]))) {
+  n=n+s[i];
+  i += 1;
+ }
+ if (n=="") a=1;
+else val(n,a,b);
+ extractnm_result=a;
+ return extractnm_result;
+}
+
+
+
+static integer extractnmv(string s, byte& i){
+ integer extractnmv_result;
+ extractnmv_result=extractnm(s, i)*((cardinal)draws >> 2);
+ return extractnmv_result;
+                                            }
+
+
+
+static void line2(integer x,integer y, enum {_none_,_notrace_,_unmove_}& mode, enum {nomove,add,sub}& xc, enum {nomove,add,sub}& yc){
+ if(mode!=_notrace_) {
+  switch(xc){
+   case add:x += xl; break;
+   case sub:x=xl-x; break;
+  }
+  switch(yc){
+   case add:y += yl; break;
+   case sub:y=yl-y; break;
+  }
+  if((yl==y)&&(x<xl)) {
+   moveto(x,yl);
+   lineto(xl,y);
+  }
+   else
+  {
+   moveto(xl,yl);
+   lineto(x,y);
+  }
+ }
+                                                                                                                                    }
+
+
+
+static void setpos(integer x,integer y, enum {nomove,add,sub}& xc, enum {nomove,add,sub}& yc, enum {_none_,_notrace_,_unmove_}& mode){
+ switch(xc){
+  case add:x += xl; break;
+  case sub:x=xl-x; break;
+ }
+ switch(yc){
+  case add:y += yl; break;
+  case sub:y=yl-y; break;
+ }
+ if(mode!=_unmove_) {
+  xl=x;
+  yl=y;
+ }
+ mode=_none_;
+ xc=nomove;
+ yc=nomove;
+                                                                                                                                     }
+
+void basicdraw(string s)
+{
+ byte i;
+ string n;
+ enum {_none_,_notrace_,_unmove_} mode;
+ integer a,b;
+ enum { nomove,add,sub} xc,yc;
+
+
+ i=1;mode=_none_;
+ while (i<=length(s)) {
+  i += 1;
+  switch (s[i-1]){
+   case 'B':mode=_notrace_; break;
+   case 'C':setcolor(extractnm(s, i)); break;
+   case 'D':{
+    a=extractnmv(s, i);
+    line2(xl,yl+a, mode, xc, yc);
+    setpos(xl,yl+a, xc, yc, mode);
+   }
+   break;
+   case 'E':{
+    a=extractnmv(s, i);
+    line2(xl+a,yl-a, mode, xc, yc);
+    setpos(xl+a,yl-a, xc, yc, mode);
+   }
+   break;
+   case 'F':{
+    a=extractnmv(s, i);
+    line2(xl+a,yl+a, mode, xc, yc);
+    setpos(xl+a,yl+a, xc, yc, mode);
+   }
+   break;
+   case 'G':{
+    a=extractnmv(s, i);
+    line2(xl-a,yl+a, mode, xc, yc);
+    setpos(xl-a,yl+a, xc, yc, mode);
+   }
+   break;
+   case 'H':{
+    a=extractnmv(s, i);
+    line2(xl-a,yl-a, mode, xc, yc);
+    setpos(xl-a,yl-a, xc, yc, mode);
+   }
+   break;
+   case 'L':{
+    a=extractnmv(s, i);
+    line2(xl-a,yl, mode, xc, yc);
+    setpos(xl-a,yl, xc, yc, mode);
+   }
+   break;
+   case 'M':{
+    if (set::of('+','-', eos).has(s[i])) {
+     if (s[i]=='+') xc=add; else xc=sub;
+     i += 1;
+    }
+    a=extractnm(s, i);
+    if (s[i]==',') {
+     i += 1;
+     if (set::of('+','-', eos).has(s[i])) {
+      if (s[i]=='+') yc=add; else yc=sub;
+      i += 1;
+     }
+     b=extractnm(s, i);
+    }
+     else
+    b=yl;
+    line2(a,b, mode, xc, yc);
+    setpos(a,b, xc, yc, mode);
+   }
+   break;
+   case 'N':mode=_unmove_; break;
+   case 'R':{
+    a=extractnmv(s, i);
+    line2(xl+a,yl, mode, xc, yc);
+    setpos(xl+a,yl, xc, yc, mode);
+   }
+   break;
+   case 'U':{
+    a=extractnmv(s, i);
+    line2(xl,yl-a, mode, xc, yc);
+    setpos(xl,yl-a, xc, yc, mode);
+   }
+   break;
+case ' ':case ';':; break;/*It's 2 characters doesn't change anything in itself, so...no stopping!*/
+   default: return;
+  }
+ }
+}
+
+ /* Order processing */
+void autocommand(){
+ skipspace();
+ if (set::of(range('0','9'), eos).has(getseparator())) {
+  autolines=readinteger();
+ }
+ skipspace();
+ if (getseparator()==',') {
+  currpos += 1;
+  incrauto=readinteger();
+ }
+ isauto=true;
+ lineempty=true;
+                  }
+
+void beepcommand(){
+ sound(1550);
+ delay(182);
+ nosound;
+                  }
+
+boolean circlecommand()
+{
+ real x,y,r;
+
+ boolean circlecommand_result;
+ circlecommand_result=false;
+ if (getseparator()=='(') {
+  currpos += 1;
+ }
+  else
+ return circlecommand_result;
+ x=getnumbervalue(1);
+ if (getseparator()==',') {
+  currpos += 1;
+ }
+  else
+ return circlecommand_result;
+ y=getnumbervalue(1);
+ if (getseparator()==')') {
+  currpos += 1;
+ }
+  else
+ return circlecommand_result;
+ if (getseparator()==',') {
+  currpos += 1;
+ }
+  else
+ return circlecommand_result;
+ r=getnumbervalue(1);
+ circle(trunc(x),trunc(y),trunc(r));
+ circlecommand_result=true;
+ return circlecommand_result;
+}
+
+void chdircommand()
+{
+ word error;
+ string s;
+
+ skipspace();
+ /*$I-*/ chdir(getstringvalue());/*$I+*/
+ error=ioresult;
+ if (error!=0) output << geterrormessage(error) << NL;
+}
+
+void clearcommand(){
+ clearvariable();
+                   }
+
+void clscommand(){
+ if(ingraph) cleardevice;
+            else clrscr;
+ if(keyfunction) showfunctionkey();
+                 }
+
+void colorcommand()
+{
+ real foreground,background;
+
+ foreground=getnumbervalue(1);
+ textcolor(trunc(foreground));
+ if (getseparator()==',') {
+  currpos += 1;
+  background=getnumbervalue(1);
+  textbackground(trunc(background));
+ }
+}
+
+void drawcommand(){
+ skipspace();
+ basicdraw(getstringvalue());
+                  }
+
+void editcommand()
+{
+ integer jumpline;
+ integer i,j,err;
+
+ jumpline=trunc(getnumbervalue(1));
+ if (numberline>0) {
+  for( i=1; i <= numberline; i ++) if(firstnumberinstr(*pa[i])==jumpline) {
+   currline=*pa[i];
+   isedit=true;
+   flush();
+  }
+ }
+}
+
+void filescommand()
+{
+ searchrec info;
+ char currdrive;
+
+ currdrive=getcurrentdisk();
+ findfirst("*.*",anyfile,info);
+ while (doserror==0)  {
+  output << padright(info.name,16);
+  findnext(info);
+ }
+ output << NL;
+ output << ' ' << format(diskfree(byte(currdrive)-64),10) << " free byte(s)" << NL;
+ output << NL;
+}
+
+boolean forcommand()
+{
+ real r1,r2;
+
+ boolean forcommand_result;
+ forcommand_result=false;
+ if (forpos>=high(forstack)) {
+  output << "FOR stack full." << NL;
+  return forcommand_result;
+ }
+ forpos += 1;
+ forstack[forpos].line=currlineptr;
+ forstack[forpos].linenumber=currnumberline;
+ skipspace();
+ forstack[forpos].varname=copy(getvariablename(),1,20);
+ skipspace();
+ if (getseparator()!='=') {
+  output << "\"=\" expected." << NL;
+  return forcommand_result;
+ }
+ currpos += 1;
+ r1=getnumbervalue(1);
+ if (variableexist(forstack[forpos].varname))
+  setvariablereal(forstack[forpos].varname,trunc(r1));
+ else
+  addvariablereal(forstack[forpos].varname,trunc(r1));
+ skipspace();
+ if (strtoupper(readword())!="TO") {
+  output << "Reserved word \"TO\" expected" << NL;
+  return forcommand_result;
+ }
+ skipspace();
+ forstack[forpos].col=currpos;
+ r2=getnumbervalue(1);
+ forcommand_result=true;
+ return forcommand_result;
+}
+
+boolean gosubcommand()
+{
+ integer jumpline;
+ integer i,j,err;
+
+ boolean gosubcommand_result;
+ gosubcommand_result=true;
+ if (gosubpos>=high(gosubstack)) {
+  output << "Full stack of GOSUB!" << NL;
+  gosubcommand_result=false;
+  return gosubcommand_result;
+ }
+ jumpline=trunc(getnumbervalue(1));
+ if((currpos<=length(currline))&&(currline[currpos]==':')) currpos += 1;
+ gosubpos += 1;
+ gosubstack[gosubpos].line=currlineptr;
+ gosubstack[gosubpos].col=currpos;
+ gosubstack[gosubpos].linenumber=currnumberline;
+ if (numberline>0) {
+  for( i=1; i <= numberline; i ++) if(firstnumberinstr(*pa[i])==jumpline) {
+   currnumberline=jumpline;
+   currline=*pa[i];
+   currlineptr=i;
+   j=1;
+   while(j<length(currline)) {
+    if (!(set::of(range('0','9'), eos).has(currline[j]))) {
+     val(copy(currline,1,j-1),currnumberline,err);
+     flush();
+    }
+    j += 1;
+   }
+   while (j<=length(currline)) {
+    if (set::of(' ','\11', eos).has(currline[j])) j += 1;
+                            else flush();
+   }
+   currpos=j;
+   return gosubcommand_result;
+  }
+ }
+ output << "Label not found" << NL;
+ gosubcommand_result=false;
+ return gosubcommand_result;
+}
+
+boolean gotocommand()
+{
+ integer jumpline;
+ integer i,j,err;
+
+ boolean gotocommand_result;
+ gotocommand_result=true;
+ jumpline=trunc(getnumbervalue(1));
+ if (numberline>0) {
+  for( i=1; i <= numberline; i ++) if(firstnumberinstr(*pa[i])==jumpline) {
+   currnumberline=jumpline;
+   currline=*pa[i];
+   currlineptr=i;
+   j=1;
+   while(j<length(currline)) {
+    if (!(set::of(range('0','9'), eos).has(currline[j]))) {
+     val(copy(currline,1,j-1),currnumberline,err);
+     flush();
+    }
+    j += 1;
+   }
+   while (j<=length(currline)) {
+    if (set::of(' ','\11', eos).has(currline[j])) j += 1;
+                            else flush();
+   }
+   currpos=j;
+   return gotocommand_result;
+  }
+ }
+ output << "Label not found" << NL;
+ gotocommand_result=false;
+ return gotocommand_result;
+}
+
+void helpcommand()
+{
+ byte i;
+
+ for( i=low(commandlist); i <= high(commandlist); i ++) output << padright(commandlist[i],10);
+ output << NL;
+}
+
+void ifcommand()
+{
+ boolean resultcmp;
+ string compare;
+ real r1,r2;
+ string s,s1,s2;
+
+ if (getseparator()=='"') {
+  compare="";
+  s1=getstringvalue();
+  switch (getseparator()) {
+   case '=':{
+    compare='=';
+    currpos += 1;
+   }
+   break;
+   case '<':{
+    currpos += 1;
+    if (getseparator()=='=') {
+     compare="<=";
+     currpos += 1;
+    }
+     else
+    compare='<';
+   }
+   break;
+   case '>':{
+    currpos += 1;
+    if (getseparator()=='=') {
+     compare=">=";
+     currpos += 1;
+    }
+     else
+    compare='>';
+   }
+   break;
+  }
+  s2=getstringvalue();
+  if (compare=="<=") resultcmp=s1<=s2; else
+  if (compare=='<') resultcmp=s1<s2; else
+  if (compare==">=") resultcmp=s1>=s2; else
+  if (compare=='>') resultcmp=s1>s2; else
+  if (compare=='=') resultcmp=s1==s2;
+   else
+  {
+   output << "Comparison operator error" << NL;
+   return;
+  }
+ }
+  else
+ {
+  compare="";
+  r1=getnumbervalue(1);
+  switch (getseparator()) {
+   case '=':{
+    currpos += 1;
+    compare='=';
+   }
+   break;
+   case '<':{
+    currpos += 1;
+    if (getseparator()=='=') {
+     currpos += 1;
+     compare="<=";
+    }
+     else
+    compare='<';
+   }
+   break;
+   case '>':{
+    currpos += 1;
+    if (getseparator()=='=') {
+     compare=">=";
+     currpos += 1;
+    }
+     else
+    compare='>';
+   }
+   break;
+  }
+  r2=getnumbervalue(1);
+  if (compare=="<=") resultcmp=r1<=r2; else
+  if (compare=='<') resultcmp=r1<r2; else
+  if (compare==">=") resultcmp=r1>=r2; else
+  if (compare=='>') resultcmp=r1>r2; else
+  if (compare=='=') resultcmp=r1==r2;
+   else
+  {
+   output << "Comparison operator error" << NL;
+   return;
+  }
+ }
+ while (currpos<length(currline))  {
+  if (!(set::of('\11',' ', eos).has(currline[currpos]))) flush();
+  currpos += 1;
+ }
+ s="";
+ while (currpos<length(currline))  {
+  if (!(set::of(range('A','Z'),range('a','z'), eos).has(currline[currpos]))) flush();
+  s=s+currline[currpos];
+  currpos += 1;
+ }
+ if (strtoupper(s)!="THEN") {
+  output << "Reserved word THEN not found" << NL;
+  return;
+ }
+ while (currpos<length(currline))  {
+  if (!(set::of('\11',' ', eos).has(currline[currpos]))) flush();
+  currpos += 1;
+ }
+ if (resultcmp)  return;
+ while (currpos<length(currline))  {
+  if((set::of('\11',' ',':', eos).has(currline[currpos]))&&(strtoupper(copy(currline,currpos+1,4))=="ELSE")) {
+   currpos += 5;
+   flush();
+  }
+  currpos += 1;
+ }
+}
+
+void keycommand()
+{
+ string s;
+
+ skipspace();
+ s="";
+ while (currpos<=length(currline))  {
+  if (!(set::of(range('A','Z'),range('a','z'), eos).has(currline[currpos]))) flush();
+  s=s+currline[currpos];
+  currpos += 1;
+ }
+ if (strtoupper(s)=="ON") {
+  keyfunction=true;
+  showfunctionkey();
+ }
+  else
+ if (strtoupper(s)=="OFF") {
+  keyfunction=false;
+  showfunctionkey();
+ }
+  else
+ output << "Unrecognized word" << NL;
+}
+
+void killcommand()
+{
+ word error;
+ untyped_file f;
+
+ skipspace();
+ /*$I-*/assign(f,getstringvalue());
+ erase(f);
+ /*$I+*/
+ error=ioresult;
+ if (error!=0) output << geterrormessage(error) << NL;
+}
+
+boolean linecommand()
+{
+ enum {_line,_b,_bf} mode;
+ real x1,y1,x2,y2,c;
+ string s;
+
+ boolean linecommand_result;
+ linecommand_result=false;
+ if (getseparator()=='(') {
+  currpos += 1;
+ }
+  else
+ return linecommand_result;
+ x1=getnumbervalue(1);
+ if (getseparator()==',') {
+  currpos += 1;
+ }
+  else
+ return linecommand_result;
+ y1=getnumbervalue(1);
+ if (getseparator()==')') {
+  currpos += 1;
+ }
+  else
+ return linecommand_result;
+ if (getseparator()=='-') {
+  currpos += 1;
+ }
+  else
+ return linecommand_result;
+ if (getseparator()=='(') {
+  currpos += 1;
+ }
+  else
+ return linecommand_result;
+ x2=getnumbervalue(1);
+ if (getseparator()==',') {
+  currpos += 1;
+ }
+  else
+ return linecommand_result;
+ y2=getnumbervalue(1);
+ if (getseparator()==')') {
+  currpos += 1;
+ }
+  else
+ return linecommand_result;
+ if (getseparator()==',') {
+  currpos += 1;
+ }
+  else
+ return linecommand_result;
+ c=getnumbervalue(1);
+ setcolor(trunc(c));
+ mode=_line;
+ if (getseparator()==',') {
+  currpos += 1;
+  skipspace();
+  s="";
+  while (currpos<=length(currline))  {
+   if (!(set::of(range('A','Z'),range('a','z'), eos).has(currline[currpos]))) flush();
+   s=s+upcase(currline[currpos]);
+   currpos += 1;
+  }
+  if (s=='B') mode=_b; else
+  if (s=="BF") mode=_bf;
+ }
+ switch (mode) {
+  case _b:rectangle(trunc(x1),trunc(y1),trunc(x2),trunc(y2)); break;
+  case _bf:{
+   setfillstyle(solidfill,trunc(c));
+   bar(trunc(x1),trunc(y1),trunc(x2),trunc(y2));
+  }
+  break;
+  default: line(trunc(x1),trunc(y1),trunc(x2),trunc(y2));
+ }
+ linecommand_result=true;
+ return linecommand_result;
+}
+
+void listcommand()
+{
+ integer i,start,finish;
+ word err;
+ word number;
+
+ if (numberline>0) {
+  start=-1;
+  finish=-1;
+  skipspace();
+  if (getseparator()=='-') {
+   currpos += 1;
+   finish=readinteger();
+  }
+   else
+  {
+   start=readinteger();
+   if (getseparator()=='-') {
+    currpos += 1;
+    finish=readinteger();
+   }
+    else
+   finish=start;
+  }
+  if((start==-1)&&(finish==-1)) {
+   for( i=1; i <= numberline; i ++) {
+    if (*pa[i]!="") output << *pa[i] << NL;
+   }
+  }
+   else
+  if((start!=-1)&&(finish==-1)) {
+   for( i=1; i <= numberline; i ++) {
+    number=firstnumberinstr(*pa[i]);
+    if(number>=start) {
+     if (*pa[i]!="") output << *pa[i] << NL;
+    }
+   }
+  }
+   else
+  if((start==-1)&&(finish!=-1)) {
+   for( i=1; i <= numberline; i ++) {
+    number=firstnumberinstr(*pa[i]);
+    if(number<=finish) {
+     if (*pa[i]!="") output << *pa[i] << NL;
+    }
+   }
+  }
+   else
+  {
+   for( i=1; i <= numberline; i ++) {
+    number=firstnumberinstr(*pa[i]);
+    if((number>=start)&&(number<=finish)) {
+     if (*pa[i]!="") output << *pa[i] << NL;
+    }
+   }
+  }
+ }
+}
+
+void llistcommand()
+{
+ integer i,start,finish;
+ word err;
+ word number;
+
+ if (numberline>0) {
+  start=-1;
+  finish=-1;
+  skipspace();
+  if (getseparator()=='-') {
+   currpos += 1;
+   finish=readinteger();
+  }
+   else
+  {
+   start=readinteger();
+   if (getseparator()=='-') {
+    currpos += 1;
+    finish=readinteger();
+   }
+    else
+   finish=start;
+  }
+  if((start==-1)&&(finish==-1)) {
+   for( i=1; i <= numberline; i ++) output << lst << *pa[i] << NL;
+  }
+   else
+  if((start!=-1)&&(finish==-1)) {
+   for( i=1; i <= numberline; i ++) {
+    number=firstnumberinstr(*pa[i]);
+    if(number>=start) output << lst << *pa[i] << NL;
+   }
+  }
+   else
+  if((start==-1)&&(finish!=-1)) {
+   for( i=1; i <= numberline; i ++) {
+    number=firstnumberinstr(*pa[i]);
+    if(number<=finish) output << lst << *pa[i] << NL;
+   }
+  }
+   else
+  {
+   for( i=1; i <= numberline; i ++) {
+    number=firstnumberinstr(*pa[i]);
+    if((number>=start)&&(number<=finish)) output << lst << *pa[i] << NL;
+   }
+  }
+ }
+}
+
+void loadcommand();
+
+
+static boolean loadbasic(string sourcename, string& s)
+
+{
+ enum {none,cocofilebas,coco1filebas,gwbasic} mode;
+ untyped_file source;
+ word pos;
+ word bytereaded;
+ byte lastb,b;
+ boolean newline;
+ array<0,4,byte> buffer;
+ single bufsingle;
+ double bufdouble;
+
+ boolean loadbasic_result;
+ loadbasic_result=true;
+ s="";
+ /*$I-*/assign(source,sourcename);
+ reset(source,1);/*$I+*/
+ if (ioresult!=0) {
+  output << "Source file not found" << NL;
+  return loadbasic_result;
+ }
+ blockread(source,buffer,3,bytereaded);
+ mode=none;
+ if(buffer[0]==0x55) {
+  seek(source,0x119);
+  blockread(source,buffer,3,bytereaded);
+ }
+ if(buffer[0]==0x9d) {
+  mode=cocofilebas;
+ }
+  else
+ if(buffer[0]==0xff) {
+  if (buffer[1]==0x7a) mode=gwbasic;
+                  else mode=coco1filebas;
+ }
+ switch (mode) {
+  case gwbasic:{
+   newcommand();
+   blockread(source,buffer,1,bytereaded);
+   pos=buffer[0];
+   blockread(source,buffer,1,bytereaded);
+   pos=pos+buffer[0]*256;
+   s=s+inttostr(pos)+' ';
+   newline=true;
+   lastb=0;
+   do {
+    blockread(source,buffer,1,bytereaded);
+    b=buffer[0];
+Lrfgw:
+    switch (b) {
+     case 0:{
+      if (! addline(ltrim(s))) {
+       output << "Out of memory" << NL;
+       flush();
+      }
+      s="";
+      blockread(source,buffer,1,bytereaded);
+      pos=buffer[0];
+      blockread(source,buffer,1,bytereaded);
+      pos=pos+buffer[0]*256;
+      blockread(source,buffer,1,bytereaded);
+      if((pos==0)&&(buffer[0]==26)) flush();
+      pos=buffer[0];
+      blockread(source,buffer,1,bytereaded);
+      pos=pos+buffer[0]*256;
+      s=s+inttostr(pos)+' ';
+      newline=true;
+     }
+     break;
+     case 0xc:s=s+"&H"; break;
+     case 0xf:{
+      blockread(source,buffer,1,bytereaded);
+      s=s+inttostr(buffer[0]);
+     }
+     break;
+     case RANGE_10(0x11,0x1a):{
+      s=s+char(buffer[0]+31);
+     }
+     break;
+     case 0x1c:{
+      blockread(source,buffer,2,bytereaded);
+      s=s+inttostr(buffer[0]+buffer[1]*256);
+     }
+     break;
+     case 0x1d:{
+      blockread(source,bufsingle,4,bytereaded);
+      /*Write(BufSingle);*/
+     }
+     break;
+     case 0x1f:{
+      blockread(source,bufdouble,4,bytereaded);
+      /*Write(BufDouble);*/
+     }
+     break;
+     case 0x3a:{
+      blockread(source,buffer,1,bytereaded);
+      switch (buffer[0]){
+       case 0x20:{
+        blockread(source,buffer,1,bytereaded);
+        if (buffer[0]==32) s=s+"GOSUB";
+                       else s=s+'\x3a'+'\40'+inttostr(buffer[0]);
+       }
+       break;
+       case 0x8f:{
+        lastb=b;
+        b=buffer[0];
+        goto Lrfgw;
+       }
+       break;
+       case 0xa1:s=s+"ELSE"; break;
+       default: {
+        s=s+char(b);
+        lastb=b;
+        b=buffer[0];
+        goto Lrfgw;
+       }
+      }
+     }
+     break;
+     case 0x81:s=s+"END"; break;
+     case 0x82:s=s+"FOR"; break;
+     case 0x83:s=s+"NEXT"; break;
+     case 0x84:s=s+"DATA"; break;
+     case 0x85:s=s+"INPUT"; break;
+     case 0x86:s=s+"DIM"; break;
+     case 0x87:s=s+"READ"; break;
+     case 0x88:s=s+"LET"; break;
+     case 0x89:s=s+"GOTO"; break;
+     case 0x8a:s=s+"RUN"; break;
+     case 0x8b:s=s+"IF"; break;
+     case 0x8c:s=s+"RESTORE"; break;
+     case 0x8d:s=s+"GOSUB"; break;
+     case 0x8e:s=s+"RETURN"; break;
+     case 0x8f:{
+      blockread(source,buffer,1,bytereaded);
+      switch (buffer[0]){
+       case 0xd9:{
+        s=s+'\'';
+        while (! eof(source)) {
+         blockread(source,buffer,1,bytereaded);
+         if (buffer[0]==0) {
+          b=buffer[0];
+          goto Lrfgw;
+         }
+         s=s+char(buffer[0]);
+        }
+       }
+       break;
+       default: {
+        s=s+"REM";
+        while (! eof(source)) {
+         blockread(source,buffer,1,bytereaded);
+         if (buffer[0]==0) {
+         b=buffer[0];
+          goto Lrfgw;
+         }
+         s=s+char(buffer[0]);
+        }
+       }
+      }
+     }
+     break;
+     case 0x90:s=s+"STOP"; break;
+     case 0x91:s=s+"PRINT"; break;
+     case 0x92:s=s+"CLEAR"; break;
+     case 0x93:s=s+"LIST"; break;
+     case 0x94:s=s+"NEW"; break;
+     case 0x95:s=s+"ON"; break;
+     case 0x96:s=s+"WAIT"; break;
+     case 0x97:s=s+"DEF"; break;
+     case 0x98:s=s+"POKE"; break;
+     case 0x99:s=s+"CONT"; break;
+     case 0x9c:s=s+"OUT"; break;
+     case 0x9d:s=s+"LPRINT"; break;
+     case 0x9e:s=s+"LLIST"; break;
+     case 0xa0:s=s+"WIDTH"; break;
+     case 0xa1:s=s+"ELSE"; break;
+     case 0xa2:s=s+"TRON"; break;
+     case 0xa3:s=s+"TROFF"; break;
+     case 0xa4:s=s+"SWAP"; break;
+     case 0xa5:s=s+"ERASE"; break;
+     case 0xa6:s=s+"EDIT"; break;
+     case 0xa7:s=s+"ERROR"; break;
+     case 0xa8:s=s+"RESUME"; break;
+     case 0xa9:s=s+"DELETE"; break;
+     case 0xaa:s=s+"AUTO"; break;
+     case 0xab:s=s+"RENUM"; break;
+     case 0xac:s=s+"DEFSTR"; break;
+     case 0xad:s=s+"DEFINT"; break;
+     case 0xae:s=s+"DEFSNG"; break;
+     case 0xaf:s=s+"DEFDBL"; break;
+     case 0xb0:s=s+"LINE"; break;
+     case 0xb1:s=s+"WHILE"; break;
+     case 0xb2:s=s+"WEND"; break;
+     case 0xb3:s=s+"CALL"; break;
+     case 0xb7:s=s+"WRITE"; break;
+     case 0xb8:s=s+"OPTION"; break;
+     case 0xb9:s=s+"RANDOMIZE"; break;
+     case 0xba:s=s+"OPEN"; break;
+     case 0xbb:s=s+"CLOSE"; break;
+     case 0xbc:s=s+"LOAD"; break;
+     case 0xbd:s=s+"MERGE"; break;
+     case 0xbe:s=s+"SAVE"; break;
+     case 0xbf:s=s+"COLOR"; break;
+     case 0xc0:s=s+"CLS"; break;
+     case 0xc1:s=s+"MOTOR"; break;
+     case 0xc2:s=s+"BSAVE"; break;
+     case 0xc3:s=s+"BLOAD"; break;
+     case 0xc4:s=s+"SOUND"; break;
+     case 0xc5:s=s+"BEEP"; break;
+     case 0xc6:s=s+"PSET"; break;
+     case 0xc7:s=s+"PRESET"; break;
+     case 0xc8:s=s+"SCREEN"; break;
+     case 0xc9:s=s+"KEY"; break;
+     case 0xca:s=s+"LOCATE"; break;
+     case 0xcc:s=s+"TO"; break;
+     case 0xcd:s=s+"THEN"; break;
+     case 0xce:s=s+"TAB("; break;
+     case 0xcf:s=s+"STEP"; break;
+     case 0xd0:s=s+"USR"; break;
+     case 0xd1:s=s+"FN"; break;
+     case 0xd2:s=s+"SPC("; break;
+     case 0xd3:s=s+"NOT"; break;
+     case 0xd4:s=s+"ERL"; break;
+     case 0xd5:s=s+"ERR"; break;
+     case 0xd6:s=s+"STRING$"; break;
+     case 0xd7:s=s+"USING"; break;
+     case 0xd8:s=s+"INSTR"; break;
+     case 0xd9:s=s+'\''; break;
+     case 0xda:s=s+"VARPTR"; break;
+     case 0xdb:s=s+"CSRLIN"; break;
+     case 0xdc:s=s+"POINT"; break;
+     case 0xdd:s=s+"OFF"; break;
+     case 0xde:s=s+"INKEY$"; break;
+     case 0xe6:s=s+'>'; break;
+     case 0xe7:s=s+'='; break;
+     case 0xe8:s=s+'<'; break;
+     case 0xe9:s=s+'+'; break;
+     case 0xea:s=s+'-'; break;
+     case 0xeb:s=s+'*'; break;
+     case 0xec:s=s+'/'; break;
+     case 0xee:s=s+"AND"; break;
+     case 0xef:s=s+"OR"; break;
+     case 0xf0:s=s+"XOR"; break;
+     case 0xf1:s=s+"EQV"; break;
+     case 0xf2:s=s+"IMP"; break;
+     case 0xf3:s=s+"MOD"; break;
+     case 0xf4:s=s+'\\'; break;
+     case 0xfd:{
+      blockread(source,buffer,1,bytereaded);
+      switch (buffer[0]){
+       case 0x81:s=s+"CVI"; break;
+       case 0x82:s=s+"CVS"; break;
+       case 0x83:s=s+"CVD"; break;
+       case 0x84:s=s+"MKI$"; break;
+       case 0x85:s=s+"MKS$"; break;
+       case 0x86:s=s+"MKD$"; break;
+       case RANGE_4(0x87,0x8a):s=s+"---";
+       break;
+       case 0x8b:s=s+"EXTERR"; break;
+       default: s=s+char(buffer[0]);
+      }
+     }
+     break;
+     case 0xfe:{
+      blockread(source,buffer,1,bytereaded);
+      switch (buffer[0]){
+       case 0x81:s=s+"FILES"; break;
+       case 0x82:s=s+"FIELD"; break;
+       case 0x83:s=s+"SYSTEM"; break;
+       case 0x84:s=s+"NAME"; break;
+       case 0x85:s=s+"LSET"; break;
+       case 0x86:s=s+"RSET"; break;
+       case 0x87:s=s+"KILL"; break;
+       case 0x88:s=s+"PUT"; break;
+       case 0x89:s=s+"GET"; break;
+       case 0x8a:s=s+"RESET"; break;
+       case 0x8b:s=s+"COMMON"; break;
+       case 0x8c:s=s+"CHAIN"; break;
+       case 0x8d:s=s+"DATE$"; break;
+       case 0x8e:s=s+"TIME$"; break;
+       case 0x8f:s=s+"PAINT"; break;
+       case 0x90:s=s+"COM"; break;
+       case 0x91:s=s+"CIRCLE"; break;
+       case 0x92:s=s+"DRAW"; break;
+       case 0x93:s=s+"PLAY"; break;
+       case 0x94:s=s+"TIMER"; break;
+       case 0x95:s=s+"ERDEV"; break;
+       case 0x96:s=s+"IOCTL"; break;
+       case 0x97:s=s+"CHDIR"; break;
+       case 0x98:s=s+"MKDIR"; break;
+       case 0x99:s=s+"RMDIR"; break;
+       case 0x9a:s=s+"SHELL"; break;
+       case 0x9b:s=s+"ENVIRON"; break;
+       case 0x9c:s=s+"VIEW"; break;
+       case 0x9d:s=s+"WINDOW"; break;
+       case 0x9e:s=s+"PMAP"; break;
+       case 0x9f:s=s+"PALETTE"; break;
+       case 0xa0:s=s+"LCOPY"; break;
+       case 0xa1:s=s+"CALLS"; break;
+       case 0xa2:case 0xa3:case 0xa4:case 0xa6:s=s+"---"; break;
+       case 0xa5:s=s+"PCOPY"; break;
+       case 0xa7:s=s+"LOCK"; break;
+       case 0xa8:s=s+"UNLOCK"; break;
+       default: s=s+char(buffer[0]);
+      }
+     }
+     break;
+     case 0xff:{
+      blockread(source,buffer,1,bytereaded);
+      switch (buffer[0]){
+       case 0x81:s=s+"LEFT$"; break;
+       case 0x82:s=s+"RIGHT$"; break;
+       case 0x83:s=s+"MID$"; break;
+       case 0x84:s=s+"SGN"; break;
+       case 0x85:s=s+"INT"; break;
+       case 0x86:s=s+"ABS"; break;
+       case 0x87:s=s+"SQR"; break;
+       case 0x88:s=s+"RND"; break;
+       case 0x89:s=s+"SIN"; break;
+       case 0x8a:s=s+"LOG"; break;
+       case 0x8b:s=s+"EXP"; break;
+       case 0x8c:s=s+"COS"; break;
+       case 0x8d:s=s+"TAN"; break;
+       case 0x8e:s=s+"ATN"; break;
+       case 0x8f:s=s+"FRE"; break;
+       case 0x90:s=s+"INP"; break;
+       case 0x91:s=s+"POS"; break;
+       case 0x92:s=s+"LEN"; break;
+       case 0x93:s=s+"STR$"; break;
+       case 0x94:s=s+"VAL"; break;
+       case 0x95:s=s+"ASC"; break;
+       case 0x96:s=s+"CHR$"; break;
+       case 0x97:s=s+"PEEK"; break;
+       case 0x98:s=s+"SPACE$"; break;
+       case 0x99:s=s+"OCT$"; break;
+       case 0x9a:s=s+"HEX$"; break;
+       case 0x9b:s=s+"LPOS"; break;
+       case 0x9c:s=s+"CINT"; break;
+       case 0x9d:s=s+"CSNG"; break;
+       case 0x9e:s=s+"CDBL"; break;
+       case 0x9f:s=s+"FIX"; break;
+       case 0xa0:s=s+"PEN"; break;
+       case 0xa1:s=s+"STICK"; break;
+       case 0xa2:s=s+"STRIG"; break;
+       case 0xa3:s=s+"EOF"; break;
+       case 0xa4:s=s+"LOC"; break;
+       case 0xa5:s=s+"LOF"; break;
+       default: s=s+char(buffer[0]);
+      }
+     }
+     break;
+     default: s=s+char(buffer[0]);
+    }
+    if (b!=0) newline=false;
+    lastb=b;
+   } while (!(eof(source)));
+   close(source);
+  }
+  break;
+  default: {
+   close(source);
+   loadbasic_result=false;
+  }
+ }
+ return loadbasic_result;
+}
+
+void loadcommand()
+{
+ text fileload;
+ string s;
+
+
+ if (getseparator()=='"') {
+  filename=getstringvalue();
+  if (filename!="") {
+   if (strtoupper(copy(filename,length(filename)-3,4))!=".BAS") filename=filename+".BAS";
+   if (! loadbasic(filename, s)) {
+    /*$I-*/assign(fileload,filename);
+    reset(fileload);/*$I+*/
+    if (ioresult!=0)  {
+     output << "File not found" << NL;
+     return;
+    }
+     newcommand();
+    while (! eof(fileload))  {
+     fileload >> s >> NL;
+     if (! addline(ltrim(s))) {
+      output << "Out of memory" << NL;
+      flush();
+     }
+    }
+    close(fileload);
+   }
+   resortlist();
+  }
+   else
+  output << "Missing file name" << NL;
+ }
+  else
+ output << "Expected string" << NL;
+}
+
+void locatecommand()
+{
+ real x,y;
+
+ y=getnumbervalue(1);
+ if (getseparator()==',') {
+  currpos += 1;
+  x=getnumbervalue(1);
+  if((x>80.0)||(x<0.0)) {
+   output << "Interval overflow" << NL;
+   return;
+  }
+  gotoxy(trunc(x),trunc(y));
+ }
+  else
+ gotoxy(1,trunc(y));
+}
+
+void lprintcommand()
+{
+ real r;
+
+ skipspace();
+ {
+  if (isstringvalue())  {
+   output << lst << getstringvalue() << NL;
+  }
+   else
+  {
+   if (currpos>length(currline)) output << NL;
+    else
+   {
+    r=getnumbervalue(1);
+    if (frac(r)==0.0) output << lst << format(r,0,0) << NL;
+                  else output << lst << r << NL;
+   }
+  }
+ }
+}
+
+void mkdircommand()
+{
+ word error;
+ string s;
+
+ skipspace();
+ /*$I-*/ mkdir(getstringvalue());/*$I+*/
+ error=ioresult;
+ if (error!=0) output << geterrormessage(error) << NL;
+}
+
+boolean namecommand()
+{
+ untyped_file f;
+ word err;
+ string sourcename,targetname,s;
+
+ boolean namecommand_result;
+ namecommand_result=false;
+ sourcename=getstringvalue();
+ skipspace();
+ s="";
+ while (currpos<=length(currline))  {
+  if (!(set::of(range('A','Z'),range('a','z'), eos).has(currline[currpos]))) flush();
+  s=s+currline[currpos];
+  currpos += 1;
+ }
+ if (strtoupper(s)!="AS") {
+  namecommand_result=false;
+  return namecommand_result;
+ }
+ targetname=getstringvalue();
+ /*$I-*/assign(f,sourcename);
+ rename(f,targetname);
+ /*$I+*/
+ err=ioresult;
+ if (err>0) output << geterrormessage(err) << NL;
+ namecommand_result=true;
+ return namecommand_result;
+}
+
+void newcommand()
+{
+ integer i;
+
+ for( i=1; i <= numberline; i ++) freemem(pa[i],length(*pa[i])+1);
+ numberline=0;
+ autolines=10;
+ incrauto=10;
+ isauto=false;
+}
+
+boolean nextcommand()
+{
+ word nextcurrpos,nextcurrlineptr,nextcurrnumberline;
+ real r2;
+
+ boolean nextcommand_result;
+ nextcommand_result=false;
+ if (forpos==0)  {
+  output << "NEXT without FOR" << NL;
+  return nextcommand_result;
+ }
+ nextcurrpos=currpos;
+ nextcurrlineptr=currlineptr;
+ nextcurrnumberline=currnumberline;
+ currpos=forstack[forpos].col;
+ currlineptr=forstack[forpos].line;
+ currline=*pa[currlineptr];
+ currnumberline=forstack[forpos].linenumber;
+ setvariablereal(forstack[forpos].varname,getvariablereal(forstack[forpos].varname)+1);
+ r2=getnumbervalue(1);
+ if (getvariablereal(forstack[forpos].varname)>r2)  {
+  currpos=nextcurrpos;
+  currlineptr=nextcurrlineptr;
+  currnumberline=nextcurrnumberline;
+  currline=*pa[currlineptr];
+  forpos -= 1;
+ }
+ nextcommand_result=true;
+ return nextcommand_result;
+}
+
+void printcommand()
+{
+ real r;
+
+ skipspace();
+ {
+  if (isstringvalue())  {
+   output << getstringvalue() << NL;
+  }
+   else
+  {
+   if (currpos>length(currline)) output << NL;
+    else
+   {
+    r=getnumbervalue(1);
+    if (frac(r)==0.0) output << format(r,0,0) << NL;
+                  else output << r << NL;
+   }
+  }
+ }
+}
+
+void rmdircommand()
+{
+ word error;
+ string s;
+
+ skipspace();
+ /*$I-*/ rmdir(getstringvalue());/*$I+*/
+ error=ioresult;
+ if (error!=0) output << geterrormessage(error) << NL;
+}
+
+void returncommand(){
+ if(gosubpos==0) {
+  output << "RETURN without GOSUB" << NL;
+  return;
+ }
+ currpos=gosubstack[gosubpos].col;
+ currlineptr=gosubstack[gosubpos].line;
+ currline=*pa[currlineptr];
+ currnumberline=gosubstack[gosubpos].linenumber;
+ gosubpos -= 1;
+                    }
+
+void runcommand()
+{
+ integer j;
+ integer err;
+
+ clearvariable();
+ if (numberline>0) {
+  currlineptr=1;
+  while(currlineptr<=numberline)  {
+   currline=*pa[currlineptr];
+   currnumberline=0;
+   j=1;
+   while(j<length(currline)) {
+    if (!(set::of(range('0','9'), eos).has(currline[j]))) {
+     val(copy(currline,1,j-1),currnumberline,err);
+     if(tron) output << '[' << currnumberline << ']';
+     flush();
+    }
+    j += 1;
+   }
+   while (j<=length(currline)) {
+    if (set::of(' ','\11', eos).has(currline[j])) j += 1;
+                            else flush();
+   }
+   currpos=j;
+   if (currline!="") {
+    if (! runbasic(true)) flush();
+   }
+   currlineptr += 1;
+  }
+ }
+}
+
+void savecommand()
+{
+ integer i;
+ text target;
+
+ if (getseparator()=='"') {
+  filename=getstringvalue();
+  if (filename=="") {
+   output << "Cannot save with empty name" << NL;
+   return;
+  }
+  /*$I-*/assign(target,filename);
+  rewrite(target);/*$I+*/
+  if (ioresult!=0)  {
+   output << "Unable to create file" << NL;
+   return;
+  }
+  if (numberline>0) {
+   for( i=1; i <= numberline; i ++) target << *pa[i] << NL;
+  }
+  close(target);
+ }
+  else
+ {
+  if (filename!="") {
+   /*$I-*/assign(target,filename);
+   rewrite(target);/*$I+*/
+   if (ioresult!=0) {
+    output << "Unable to create file" << NL;
+    return;
+   }
+   if (numberline>0) {
+    for( i=1; i <= numberline; i ++) target << *pa[i] << NL;
+   }
+   close(target);
+  }
+   else
+  output << "Unable to save without a name" << NL;
+ }
+}
+
+void screencommand()
+{
+ real screen;
+ integer driver,mode;
+ integer errcode;
+
+ screen=getnumbervalue(1);
+ switch (trunc(screen)){
+  case 0:{
+   closegraph;
+   ingraph=false;
+  }
+  break;
+  default: {
+   ingraph=true;
+   #ifdef FPC
+    driver=vga;
+    mode=vgahi;
+   #else
+    driver=detect;
+    mode=vgahi;
+   #endif
+    initgraph(driver,mode,"");
+    errcode=graphresult;
+    if (errcode==grok)  {
+    setcolor(white);
+    setlinestyle(0, 0, 1);
+   }
+    else
+   {
+    output << "Graphics error : " << grapherrormsg(errcode) << NL;
+    exit(0);
+   }
+  }
+ }
+}
+
+void sleepcommand()
+{
+ real n;
+
+ n=getnumbervalue(1);
+ delay(trunc(n*1000));
+}
+
+void troffcommand(){
+ tron=false;
+                   }
+
+void troncommand(){
+ tron=true;
+                  }
+
+boolean widthcommand()
+{
+ real width;
+
+ boolean widthcommand_result;
+ widthcommand_result=true;
+ width=getnumbervalue(1);
+ switch (trunc(width)){
+  case 40:textmode(c40); break;
+  case 80:textmode(c80); break;
+  default: {
+   output << "Invalid value" << NL;
+   widthcommand_result=false;
+  }
+ }
+ return widthcommand_result;
+}
+
+void readline(string& s)
+{
+ char k;
+ byte y;
+
+ y=wherey;
+ if(isedit) isedit=false;
+           else s="";
+ if(isauto) {
+  s=inttostr(autolines)+' ';
+  autolines += 10;
+ }
+ do {
+  gotoxy(1,y);
+  output << s;
+  clreol;
+  k=readkey();
+  switch (k) {
+   case '\0':switch (readkey()) {
+    case '\21':s=s+"WIDTH "; break;           /* Alt+W */
+    case '\22':s=s+"ELSE "; break;            /* Alt+E */
+    case '\23':s=s+"RUN "; break;             /* Alt+R */
+    case '\24':s=s+"THEN "; break;            /* Alt+T */
+    case '\26':s=s+"USING "; break;           /* Alt+U */
+    case '\27':s=s+"INPUT "; break;           /* Alt+I */
+    case '\30':s=s+"OPEN "; break;            /* Alt+C */
+    case '\31':s=s+"PRINT "; break;           /* Alt+P */
+    case '\36':s=s+"AUTO "; break;            /* Alt+A */
+    case '\37':s=s+"SCREEN "; break;          /* Alt+S */
+    case '\40':s=s+"DELETE "; break;          /* Alt+D */
+    case '\41':s=s+"FOR "; break;             /* Alt+F */
+    case '\42':s=s+"GOTO "; break;            /* Alt+G */
+    case '\43':s=s+"HEX$ "; break;            /* Alt+H */
+    case '\45':s=s+"KEY "; break;             /* Alt+C */
+    case '\46':s=s+"LOCATE "; break;          /* Alt+L */
+    case '\55':s=s+"XOR "; break;             /* Alt+X */
+    case '\56':s=s+"COLOR "; break;           /* Alt+C */
+    case '\57':s=s+"VAL "; break;             /* Alt+V */
+    case '\60':case '\61':s=s+"NEXT "; break;        /* Alt+B, Alt+N */
+    case '\62':s=s+"MOTOR "; break;           /* Alt+M */
+    case '\73':s=s+functionkeylist[1]; break; /* F1 */
+    case '\74':s=s+functionkeylist[2]; break; /* F2 */
+    case '\75':s=s+functionkeylist[3]; break; /* F3 */
+    case '\76':s=s+functionkeylist[4]; break; /* F4 */
+    case '\77':s=s+functionkeylist[5]; break; /* F5 */
+    case '\100':s=s+functionkeylist[6]; break; /* F6 */
+    case '\101':s=s+functionkeylist[7]; break; /* F7 */
+    case '\102':s=s+functionkeylist[8]; break; /* F8 */
+    case '\103':s=s+functionkeylist[9]; break; /* F9 */
+    case '\104':s=s+functionkeylist[10]; break; /* F10 */
+   }
+   break;
+   case '\3':{
+    isauto=false;
+    k='\15';
+    flush();
+   }
+   break;
+   case '\10':{
+    if (s!="") s=copy(s,1,length(s)-1);
+   }
+   break;
+   default: s=s+k;
+  }
+  if (s[length(s)]=='\15') {
+   s=copy(s,1,length(s)-1);
+   k='\15';
+  }
+ } while (!(k=='\15'));
+ gotoxy(1,y);
+ output << s << NL;
+}
+
+boolean runbasic(boolean inlist)
+{
+ boolean unknowncommand;
+ boolean noimplementation;
+ integer j,err,thisnumber;
+ real r1;
+ string s1;
+
+ boolean runbasic_result;
+ runbasic_result=false;
+ if (!(inlist)) {
+  currpos=1;
+  j=1;currnumberline=0;
+  while(j<length(currline)) {
+   if (!(set::of(range('0','9'), eos).has(currline[j]))) {
+    val(copy(currline,1,j-1),currnumberline,err);
+    flush();
+   }
+   j += 1;
+  }
+  if (currnumberline!=0) {
+   for( j=1; j <= numberline; j ++) {
+    thisnumber=firstnumberinstr(*pa[j]);
+    if (thisnumber>0)  {
+     if(thisnumber==currnumberline) {
+      *pa[j]=currline;
+      lineempty=true;
+      return runbasic_result;
+     }
+    }
+   }
+   lineempty=true;
+   addline(currline);
+   resortlist();
+   return runbasic_result;
+  }
+ }
+ skipspace();
+ if (currline[currpos]=='\'') {;
+  /* It's a comment, we did nothing */
+ }
+  else
+ do {
+  noimplementation=false;
+  unknowncommand=false;
+  switch (extractcommand()) {
+   case 0: noimplementation=true; break;/*AND*/
+   case 1: autocommand(); break;/*AUTO*/
+   case 2: beepcommand(); break;/*BEEP*/
+   case 3: noimplementation=true; break;/*BLOAD*/
+   case 4: noimplementation=true; break;/*BSAVE*/
+   case 5: noimplementation=true; break;/*CALL*/
+   case 6: noimplementation=true; break;/*CAT*/
+   case 7: noimplementation=true; break;/*CHAIN*/
+   case 8: chdircommand(); break;/*CHDIR*/
+   case 9: circlecommand(); break;/*CIRCLE*/
+   case 10: clearcommand(); break;/*CLEAR*/
+   case 11: noimplementation=true; break;/*CLOSE*/
+   case 12: noimplementation=true; break;/*CLR*/
+   case 13: clscommand(); break;/*CLS*/
+   case 14: colorcommand(); break;/*COLOR*/
+   case 15: noimplementation=true; break;/*COM*/
+   case 16: noimplementation=true; break;/*COMMON*/
+   case 17: noimplementation=true; break;/*CONT*/
+   case 18: noimplementation=true; break;/*DATA*/
+   case 19: noimplementation=true; break;/*DEF*/
+   case 20: noimplementation=true; break;/*DELETE*/
+   case 21: noimplementation=true; break;/*DIM*/
+   case 22: drawcommand(); break;/*DRAW*/
+   case 23: { /*EDIT*/
+    editcommand();
+    return runbasic_result;
+   }
+   break;
+   case 24: noimplementation=true; break;/*ELSE*/
+   case 25: return runbasic_result; break;/*END*/
+   case 26: noimplementation=true; break;/*ERASE*/
+   case 27: noimplementation=true; break;/*ERROR*/
+   case 28: noimplementation=true; break;/*FIELD*/
+   case 29: filescommand(); break;/*FILES*/
+   case 30: if (!(forcommand())) return runbasic_result; break;/*FOR*/
+   case 31: noimplementation=true; break;/*GET*/
+   case 32: if (!(gosubcommand())) return runbasic_result; break;/*GOSUB*/
+   case 33: if (!(gotocommand())) return runbasic_result; break;/*GOTO*/
+   case 34: helpcommand(); break;/*HELP*/
+   case 35: ifcommand(); break;/*IF*/
+   case 36: noimplementation=true; break;/*INPUT*/
+   case 37: keycommand(); break;/*KEY*/
+   case 38: killcommand(); break;/*KILL*/
+   case 39: noimplementation=true; break;/*LET*/
+   case 40: linecommand(); break;/*LINE*/
+   case 41: listcommand(); break;/*LIST*/
+   case 42: llistcommand(); break;/*LLIST*/
+   case 43: loadcommand(); break;/*LOAD*/
+   case 44: locatecommand(); break;/*LOCATE*/
+   case 45: lprintcommand(); break;/*LPRINT*/
+   case 46: noimplementation=true; break;/*LSET*/
+   case 47: noimplementation=true; break;/*MERGE*/
+   case 48: mkdircommand(); break;/*MKDIR*/
+   case 49: if (!(namecommand())) return runbasic_result; break;/*NAME*/
+   case 50: newcommand(); break;/*NEW*/
+   case 51: if (!(nextcommand())) return runbasic_result; break;/*NEXT*/
+   case 52: noimplementation=true; break;/*ON*/
+   case 53: noimplementation=true; break;/*OPEN*/
+   case 54: noimplementation=true; break;/*OPTION*/
+   case 55: noimplementation=true; break;/*OR*/
+   case 56: noimplementation=true; break;/*OUT*/
+   case 57: noimplementation=true; break;/*PAINT*/
+   case 58: noimplementation=true; break;/*PALETTE*/
+   case 59: noimplementation=true; break;/*POKE*/
+   case 60: noimplementation=true; break;/*PLAY*/
+   case 61: noimplementation=true; break;/*PRESET*/
+   case 62: printcommand(); break;/*PRINT*/
+   case 63: noimplementation=true; break;/*PSET*/
+   case 64: noimplementation=true; break;/*PUT*/
+   case 65: noimplementation=true; break;/*RANDOMIZE*/
+   case 66: noimplementation=true; break;/*READ*/
+   case 67: {
+    runbasic_result=true;
+    return runbasic_result;/*REM*/
+   }
+   break;
+   case 68: noimplementation=true; break;/*RENUM*/
+   case 69: noimplementation=true; break;/*RESET*/
+   case 70: noimplementation=true; break;/*RESUME*/
+   case 71: noimplementation=true; break;/*RESTORE*/
+   case 72: returncommand(); break;/*RETURN*/
+   case 73: rmdircommand(); break;/*RMDIR*/
+   case 74: noimplementation=true; break;/*RSET*/
+   case 75: runcommand(); break;/*RUN*/
+   case 76: savecommand(); break;/*SAVE*/
+   case 77: screencommand(); break;/*SCREEN*/
+   case 78: noimplementation=true; break;/*SHELL*/
+   case 79: sleepcommand(); break;/*SLEEP*/
+   case 80: return runbasic_result; break;/*STOP*/
+   case 81: { /*SYSTEM*/
+    terminated=true;
+    return runbasic_result;
+   }
+   break;
+   case 82: noimplementation=true; break;/*THEN*/
+   case 83: troffcommand(); break;/*TROFF*/
+   case 84: troncommand(); break;/*TRON*/
+   case 85: noimplementation=true; break;/*VIEW*/
+   case 86: noimplementation=true; break;/*WAIT*/
+   case 87: noimplementation=true; break;/*WEND*/
+   case 88: noimplementation=true; break;/*WHILE*/
+   case 89: if (!(widthcommand())) flush(); break;/*WIDTH*/
+   case 90: noimplementation=true; break;/*WINDOW*/
+   case 91: noimplementation=true; break;/*WRITE*/
+   default: unknowncommand=true;
+  }
+  if(unknowncommand) {
+   skipspace();
+   if (currline[currpos]=='=') {
+    switch (currcommand[length(currcommand)]){
+     case '%':{
+      r1=getnumbervalue(1);
+      if (variableexist(currcommand))
+       setvariableint(currcommand,trunc(r1));
+      else
+       addvariableint(currcommand,trunc(r1));
+     }
+     break;
+     case '#':case '!':{
+      r1=getnumbervalue(1);
+      if (variableexist(currcommand))
+       setvariablereal(currcommand,r1);
+      else
+       addvariablereal(currcommand,r1);
+     }
+     break;
+     case '$':{
+      currpos += 1;
+      s1=getstringvalue();
+      if (variableexist(currcommand))
+       setvariablestring(currcommand,s1);
+      else
+       addvariablestring(currcommand,s1);
+     }
+     break;
+     default: {
+      r1=getnumbervalue(1);
+      if (frac(r1)!=0.0)  {
+       if (variableexist(currcommand))
+        setvariablereal(currcommand,r1);
+       else
+        addvariablereal(currcommand,r1);
+      }
+       else
+      {
+       if (variableexist(currcommand))
+        setvariablelongint(currcommand,trunc(r1));
+       else
+        addvariablelongint(currcommand,trunc(r1));
+      }
+     }
+    }
+   }
+    else
+   if(inlist) output << "Unrecognized command on line " << currnumberline << ": " << currcommand << NL;
+             else output << "Command not recognized" << NL;
+   return runbasic_result;
+  }
+  if(noimplementation) {
+   output << "This command has not been implemented : " << currcommand << NL;
+   return runbasic_result;
+  }
+  while((set::of(' ',':', eos).has(currline[currpos]))&&(currpos<=length(currline)))  currpos += 1;
+  if (currpos>=length(currline)) flush();
+  if (!(set::of(range('A','Z'),range('a','z'),'_', eos).has(currline[currpos]))) {
+   if(inlist) output << "Syntax error at position " << currpos << " of the line " << currnumberline << NL;
+             else output << "Syntax error at position " << currpos << NL;
+   return runbasic_result;
+  }
+ } while (!(currpos>length(currline)));
+ runbasic_result=true;
+ return runbasic_result;
+}
+
+int main(int argc, const char* argv[])
+{
+ #ifdef FPC
+  #ifdef WINDOWS
+   pio_initialize(argc, argv);
+   setuseacp(false);
+  #endif
+ #endif
+ if((paramstr(1)=="/?")||(paramstr(1)=="--help")||(paramstr(1)=="-h")) {
+  output << "GWBASIC : This command launches the GWBASIC interpreter." << NL;
+  output << NL;
+  output << "Syntax: GWBASIC [file]" << NL;
+  output << NL;
+  output << "file This parameter allows you to specify the name of the BASIC file." << NL;
+ }
+  else
+ if (paramstr(1)=="--version") {
+  output << "GWBASIC " << version << " - Clone Pascal from Coral, MS-DOS-0, GWBASIC-0" << NL;
+  output << "MIT License" << NL;
+  output << NL;
+  output << "Written by Sylvain Maltais" << NL;
+ }
+  else
+ {
+  filename="";
+  functionkeylist[1]="LIST ";
+  functionkeylist[2]="RUN\r";
+  functionkeylist[3]="LOAD\"";
+  functionkeylist[4]="SAVE\"";
+  functionkeylist[5]="CONT\r";
+  functionkeylist[6]=",\"LPT1";
+  functionkeylist[7]="TRON\r";
+  functionkeylist[8]="TROFF\r";
+  functionkeylist[9]="KEY ";
+  functionkeylist[10]="SCREEN";
+  ingraph=false;
+  tron=false;keyfunction=true;
+  numberline=0;currnumberline=0;
+  numbervariable=0;gosubpos=0;forpos=0;
+  for( i=1; i <= paramcount; i ++) {
+   filename=paramstr(i);
+  }
+  homemessage();
+  if (filename!="") {
+   currline=string("LOAD \"")+filename+"\":RUN";
+   runbasic(false);
+  }
+  terminated=false;
+  lineempty=false;
+  autolines=10;
+  incrauto=10;
+  isauto=false;
+  isedit=false;
+  do {
+   if (!(lineempty)) output << "OK" << NL;
+   readline(currline);
+   lineempty=currline=="";
+   if (currline=="") lineempty=true; else
+   if(isnumberword(trim(currline))) {         /* Delete a line number? */
+    currpos=1;
+    currline=trim(currline);
+    deletelinenumber(readinteger());
+   }
+    else
+   {
+    currline=ltrim(currline);
+    runbasic(false);
+   }
+  } while (!terminated);
+  if(ingraph) closegraph;
+  window(1,1,80,25);
+  clrscr;
+ }
+   return EXIT_SUCCESS;
+}

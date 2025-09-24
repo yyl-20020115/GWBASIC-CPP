@@ -167,9 +167,9 @@ struct viewporttype {
     int y2;
     int clip;
 };
-
+#ifdef __cplusplus
 extern "C" {
-
+#endif
 extern int bgiemu_handle_redraw;
 
 void arc(int, int, int, int, int);
@@ -248,8 +248,9 @@ int textwidth(char const*);
 int getch(void);
 int kbhit(void);		
 void delay(int msec);
-
+#ifdef __cplusplus
 };
+#endif
 
 inline void getdefaultpalette(palettetype& pal) { 
     pal = *getdefaultpalette(); 

@@ -11,7 +11,6 @@
 #define high(x) (x.size()-1)
 #define C40 1
 #define C80 3
-//TODO: NOTICE: these macros are dummy
 #define blockread(f, buf, size, read) 
 #define format(a,b,c) ("")
 
