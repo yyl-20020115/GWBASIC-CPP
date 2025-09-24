@@ -4,21 +4,21 @@
 #define maxint ((int)(1 << (sizeof(integer)*8-1)) - 1)
 
 #ifdef __cplusplus
-extern "C" { 
+extern "C" {
 #endif
 
-double sin(double);
-double cos(double);
-double tan(double);
-double atan(double);
+	double sin(double);
+	double cos(double);
+	double tan(double);
+	double atan(double);
 
-double exp(double);
-double log(double);
+	double exp(double);
+	double log(double);
 
-double sqrt(double);
+	double sqrt(double);
 
 #ifdef __cplusplus
-} 
+}
 #endif
 
 /*
@@ -49,36 +49,36 @@ double sqrt(double);
 #ifndef abs
 #if 0 // abs for integers is defined in stdlib
 inline signed char   abs(signed char x) { return x < 0 ? -x : x; }
-inline short         abs(short x)       { return x < 0 ? -x : x; }
-inline int           abs(int x)         { return x < 0 ? -x : x; }
-inline long          abs(long x)        { return x < 0 ? -x : x; }
+inline short         abs(short x) { return x < 0 ? -x : x; }
+inline int           abs(int x) { return x < 0 ? -x : x; }
+inline long          abs(long x) { return x < 0 ? -x : x; }
 inline float         abs(float x) { return  x < 0 ? -x : x; }
 inline double        abs(double x) { return  x < 0 ? -x : x; }
 #endif
 #endif
 
-inline int           sqr(signed char x)    { return x*x; } 
-inline unsigned      sqr(unsigned char x)  { return x*x; } 
-inline int           sqr(short x)          { return x*x; } 
-inline unsigned      sqr(unsigned short x) { return x*x; } 
-inline int           sqr(int x)            { return x*x; } 
-inline unsigned      sqr(unsigned x)       { return x*x; } 
-inline long          sqr(long x)           { return x*x; } 
-inline unsigned long sqr(unsigned long x)  { return x*x; } 
-inline float         sqr(float x)          { return x*x; } 
-inline double        sqr(double x)         { return x*x; } 
+inline int           sqr(signed char x) { return x * x; }
+inline unsigned      sqr(unsigned char x) { return x * x; }
+inline int           sqr(short x) { return x * x; }
+inline unsigned      sqr(unsigned short x) { return x * x; }
+inline int           sqr(int x) { return x * x; }
+inline unsigned      sqr(unsigned x) { return x * x; }
+inline long          sqr(long x) { return x * x; }
+inline unsigned long sqr(unsigned long x) { return x * x; }
+inline float         sqr(float x) { return x * x; }
+inline double        sqr(double x) { return x * x; }
 
-extern "C" void timestamp(integer* day,  integer* month, integer* year, 
-			  integer* hour, integer* min,   integer* sec);
+extern "C" void timestamp(integer* day, integer* month, integer* year,
+	integer* hour, integer* min, integer* sec);
 
 extern "C" real get_realtime();
 #if 0
 extern "C" integer round(real);
 #endif
-inline void timestamp(integer& day,  integer& month, integer& year, 
-		      integer& hour, integer& min,   integer& sec)
+inline void timestamp(integer& day, integer& month, integer& year,
+	integer& hour, integer& min, integer& sec)
 {
-    timestamp(&day, &month, &year, &hour, &min, &sec);
+	timestamp(&day, &month, &year, &hour, &min, &sec);
 }
 
 #else
@@ -88,8 +88,8 @@ inline void timestamp(integer& day,  integer& month, integer& year,
 #endif
 #define sqr(x) ((x)*(x))
 
-void timestamp(integer* day,  integer* month, integer* year, 
-	       integer* hour, integer* min,   integer* sec);
+void timestamp(integer* day, integer* month, integer* year,
+	integer* hour, integer* min, integer* sec);
 
 real get_realtime();
 
@@ -135,9 +135,9 @@ extern "C" boolean directvideo;
 extern "C" pointer exitproc;
 extern "C" unsigned randseed;
 
-inline string paramstr(int index) { 
-    assert(index <= paramcount);
-    return string(param_array[index]);
+inline string paramstr(int index) {
+	assert(index <= paramcount);
+	return string(param_array[index]);
 }
 
 inline void halt(int code = EXIT_FAILURE) { exit(code); }

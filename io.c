@@ -291,7 +291,8 @@ static integer pio_open_status(file_descriptor* fd)
 }
 
 
-static void pio_open_file(file_descriptor* fd, const char* file_name,
+
+void pio_open_file(file_descriptor* fd, const char* file_name,
 	const char* options, integer* error_code,
 	int   mode, size_t record_size)
 

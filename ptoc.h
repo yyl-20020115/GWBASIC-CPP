@@ -20,14 +20,14 @@ typedef real		  single; /* single precision floating point */
 
 #ifdef TURBO_PASCAL
 typedef long           longint;
-typedef unsigned       word; /* It should have the same size as integer */ 
-typedef unsigned char  byte; 
-typedef signed char    shortint; 
-typedef void*          pointer;
-typedef const char*    asciiz;
+typedef unsigned       word; /* It should have the same size as integer */
+typedef unsigned char  byte;
+typedef signed char    shortint;
+typedef void* pointer;
+typedef const char* asciiz;
 #endif               
 
-typedef unsigned char boolean; 
+typedef unsigned char boolean;
 #define true          (1)
 #define false         (0)
 

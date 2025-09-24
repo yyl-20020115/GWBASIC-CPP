@@ -8,7 +8,7 @@ integer round(real x)
 	return x >= 0 ? trunc(x + 0.5) : trunc(x - 0.5);
 }
 size_t length(string& s) {
-	return s.length();	
+	return s.length();
 }
 void flush() {
 
@@ -19,9 +19,9 @@ byte wherey() {
 byte wherex() {
 	return 0;
 }
-void window(byte x,byte y,byte w,byte h) {
+void window(byte x, byte y, byte w, byte h) {
 }
-void gotoxy(byte x,byte y) {
+void gotoxy(byte x, byte y) {
 }
 void clreol() {
 }
@@ -32,7 +32,7 @@ void textbackground(byte color) {
 void clrscr() {
 }
 void getdir(int i, string& s) {
-	
+
 }
 float frac(float v) {
 	return v - (integer)v;
@@ -62,10 +62,10 @@ void textmode(byte mode) {
 }
 
 int doserror() {
-	return 0;
+	return errno;
 }
 
-int reset(untyped_file & f, int i) {
+int reset(untyped_file& f, int i) {
 	return 0;
 }
 

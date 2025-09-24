@@ -833,8 +833,4 @@ public:
 		invalid_history = 3,
 		file_already_exists = 4
 	};
-
-
 #endif
-
-
