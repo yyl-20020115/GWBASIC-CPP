@@ -13,6 +13,8 @@
 #define high(x) (x.size()-1)
 #define C40 1
 #define C80 3
+
+//TODO: Implement the following functions/macros
 #define blockread(f, buf, size, read) 
 #define format(a,b,c) ("")
 

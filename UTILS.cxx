@@ -23,14 +23,14 @@ byte wherex() {
 	return x;
 }
 void window(byte x, byte y, byte w, byte h) {
-	//TODO:
+	//NOTICE:
 }
 void gotoxy(byte _x, byte _y) {
 	x = _x;
 	y = _y;
 }
 void clreol() {
-	//TODO:
+	//NOTICE:
 }
 void textcolor(byte color) {
 	fc = color;
@@ -39,10 +39,13 @@ void textbackground(byte color) {
 	bc = color;
 }
 void clrscr() {
-	//TODO:
+	//NOTICE:
 }
 void getdir(int i, string& s) {
-	//TODO:
+	//NOTICE:
+	s = ('C' + i);
+	s = s+ ":";
+	s = s + "\\\\";
 }
 float frac(float v) {
 	return v - (integer)v;
@@ -83,7 +86,8 @@ int doserror() {
 size_t diskfree(byte drive) {
 	_diskfree_t d = { 0 };
 	//NOTICE:
-	_getdiskfree(drive, &d);
-
-	return d.avail_clusters * d.sectors_per_cluster * d.bytes_per_sector;
+	return 0U == _getdiskfree(drive, &d) 
+		? (size_t)d.avail_clusters * (size_t)d.sectors_per_cluster * (size_t)d.bytes_per_sector
+		: 0
+		;
 }
