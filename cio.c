@@ -1,5 +1,5 @@
 #include "ptoc.h"
-#include "io.h"
+#include "cio.h"
 #include <errno.h>
 #include <ctype.h>
 

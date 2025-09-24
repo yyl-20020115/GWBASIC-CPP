@@ -10,12 +10,12 @@ add_subdirectory(WinBGI)
 
 add_executable(GWBASIC
     ptoc.h
-    io.h
+    cio.h
     array.h
     paslib.h
     GWBASIC.h
     set.c
-    io.c
+    cio.c
     paslib.c
     GWBASIC.cxx
     UTILS.cxx

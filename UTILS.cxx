@@ -1,5 +1,6 @@
 #include "GWBASIC.h"
-
+#include <stdio.h>
+#include <direct.h>  
 text output;
 text input;
 byte x = 1, y = 1;
@@ -54,17 +55,21 @@ void nosound() {
 	//TODO:
 }
 void chdir(string& path) {
-	//TODO:
+	//NOTICE:
+	::_chdir(path);
 }
 void mkdir(string& path) {
-	//TODO:
+	//NOTICE:
+	::_mkdir(path);
 }
 void rmdir(string& path) {
-	//TODO:
+	//NOTICE:
+	::_rmdir(path);
 }
 
 void erase(untyped_file& f) {
-	//TODO:
+	//NOTICE:
+	::_unlink(f.desc.name);
 }
 
 void textmode(byte mode) {
@@ -75,8 +80,10 @@ int doserror() {
 	return errno;
 }
 
-int reset(untyped_file& f, int i) {
-	//TODO:
-	return 0;
-}
+size_t diskfree(byte drive) {
+	_diskfree_t d = { 0 };
+	//NOTICE:
+	_getdiskfree(drive, &d);
 
+	return d.avail_clusters * d.sectors_per_cluster * d.bytes_per_sector;
+}

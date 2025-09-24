@@ -1,11 +1,13 @@
 #ifndef __GWBASIC_H__
 #define __GWBASIC_H__
 #include "ptoc.h"
-#include "io.h"
+#include "cio.h"
 #include "array.h"
 #include "set.h"
 #include "graph.h"
 #include "paslib.h"
+#include <stdio.h>
+#include <io.h>
 
 #define low(x) (0)
 #define high(x) (x.size()-1)
@@ -35,7 +37,6 @@ void rmdir(string& path);
 void erase(untyped_file& f);
 void textmode(byte mode);
 int doserror();
-
-int reset(untyped_file& f, int i);
+size_t diskfree(byte drive);
 integer round(real v);
 #endif
