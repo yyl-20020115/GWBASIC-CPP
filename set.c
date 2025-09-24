@@ -108,4 +108,3 @@ set setof(int param1, ...) {
 	va_end(ap);
 	return s;
 }
-

@@ -2,7 +2,8 @@
 
 text output;
 text input;
-
+byte cx = 1, cy = 1;
+byte cm = 1;
 integer round(real x)
 {
 	return x >= 0 ? trunc(x + 0.5) : trunc(x - 0.5);
@@ -14,14 +15,16 @@ void flush() {
 
 }
 byte wherey() {
-	return 0;
+	return cy;
 }
 byte wherex() {
-	return 0;
+	return cx;
 }
 void window(byte x, byte y, byte w, byte h) {
 }
 void gotoxy(byte x, byte y) {
+	cx = x;
+	cy = y;
 }
 void clreol() {
 }
@@ -44,7 +47,7 @@ void nosound() {
 
 }
 void chdir(string& path) {
-
+	
 }
 void mkdir(string& path) {
 
@@ -58,7 +61,7 @@ void erase(untyped_file& f) {
 }
 
 void textmode(byte mode) {
-
+	cm = mode;
 }
 
 int doserror() {
@@ -68,4 +71,3 @@ int doserror() {
 int reset(untyped_file& f, int i) {
 	return 0;
 }
-

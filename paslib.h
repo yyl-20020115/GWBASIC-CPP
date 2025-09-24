@@ -105,8 +105,8 @@ integer round(real);
 #define keypressed() _kbhit()
 #endif
 
-#define lo(x) ((x) & 0xFF)
-#define hi(x) (((x) >> 8) & 0xFF)
+#define lo(x) ((cx) & 0xFF)
+#define hi(x) (((cx) >> 8) & 0xFF)
 #define ptr(seg, ofs) (void*)(((seg) << 16) | (ofs))
 
 char* get_date();
