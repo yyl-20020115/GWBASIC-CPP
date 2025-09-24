@@ -3,6 +3,9 @@
 #include <errno.h>
 #include <ctype.h>
 
+
+extern int paramcount;
+extern char const* const* param_array;
 extern integer ioresult = 0;
 
 #define UPCASE_INPUT 1
@@ -63,7 +66,7 @@ enum file_state { fs_record_defined = 1, fs_next_pos = 2, fs_ignore_error = 4 };
 text_descriptor _input;
 text_descriptor _output;
 
-void pio_initialize()
+void pio_initialize(int argc, const char** argv)
 {
 #ifdef UPCASE_INPUT
 	_input.desc.f = fopen("sys$input", "r", "rop=cvt");
@@ -85,10 +88,12 @@ static char* strdup(const char* src)
 text_descriptor _input = { {0} };// = { { stdin } };
 text_descriptor _output = { {0} };// = { { stdout } };
 
-void pio_initialize()
+void pio_initialize(int argc, const char** argv)
 {
 	_input.desc.f = stdin;
 	_output.desc.f = stdout;
+	paramcount = argc;
+	param_array = argv;
 }
 #endif
 

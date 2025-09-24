@@ -540,6 +540,8 @@ public:
 		set_length(len);
 	}
 	varying_string(const char* str) {
+		//NOTICE: in Turbo Pascal, assigning NULL to a string results in an empty string
+		str = str == NULL ? "" : str;
 		size_t len = strlen(str);
 		if (len > max_size) len = max_size;
 		memcpy(body, str, len);

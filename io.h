@@ -34,7 +34,7 @@ extern "C" {
 #endif
 	extern boolean pio_ignore_error;
 
-	void pio_initialize();
+	void pio_initialize(int argc, const char** argv);
 
 	void pio_rewrite_file(file_descriptor* fd,
 		size_t record_size,
