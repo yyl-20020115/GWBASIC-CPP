@@ -893,11 +893,30 @@ void pio_output_end_of_page(text_descriptor* td)
 	postoutput(td);
 }
 
-void pio_output_real(text_descriptor* td, real val, const int* width,
+void pio_output_float(text_descriptor* td, float val, const int* width,
 	const int* prec)
 {
 	if (prec == NULL && width == NULL) {
-		fprintf(td->desc.f, "% G", val);
+		fprintf(td->desc.f, "%G", val);
+	}
+	else if (prec != NULL && width != NULL) {
+		if (*prec < 0) {
+			fprintf(td->desc.f, "%*.*E", *width, -*prec, val);
+		}
+		else {
+			fprintf(td->desc.f, "%*.*f", *width, *prec, val);
+		}
+	}
+	else {
+		fprintf(td->desc.f, "% .*E", *width, val);
+	}
+	postoutput(td);
+}
+void pio_output_double(text_descriptor* td, double val, const int* width,
+	const int* prec)
+{
+	if (prec == NULL && width == NULL) {
+		fprintf(td->desc.f, "%G", val);
 	}
 	else if (prec != NULL && width != NULL) {
 		if (*prec < 0) {
@@ -1139,7 +1158,7 @@ static void format_write(text_descriptor* td, char* fmt, va_list ap)
 						prec = va_arg(ap, int);
 					}
 				}
-				pio_output_real(td, val,
+				pio_output_float(td, val,
 					(format & (const_width | var_width))
 					? &width : NULL,
 					(format & (const_prec | var_prec))

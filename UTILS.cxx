@@ -10,9 +10,6 @@ integer round(real x)
 {
 	return x >= 0 ? trunc(x + 0.5) : trunc(x - 0.5);
 }
-void flush() {
-
-}
 void window(byte x, byte y, byte w, byte h) {
 	//NOTICE:
 }

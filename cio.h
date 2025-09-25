@@ -120,7 +120,10 @@ extern "C" {
 	void pio_input_newline(text_descriptor* td);
 
 
-	void pio_output_real(text_descriptor* td, double val, const int* width,
+	void pio_output_float(text_descriptor* td, float val, const int* width,
+		const int* prec);
+
+	void pio_output_double(text_descriptor* td, double val, const int* width,
 		const int* prec);
 
 	void pio_output_integer(text_descriptor* td, int val,
@@ -438,7 +441,7 @@ public:
 
 	text& operator << (double x)
 	{
-		pio_output_real((text_descriptor*)this, x, NULL, NULL);
+		pio_output_double((text_descriptor*)this, x, NULL, NULL);
 		return *this;
 	}
 
@@ -572,7 +575,7 @@ private:
 
 public:
 	friend class text& operator << (class text& t, format_real const& fr) {
-		pio_output_real((text_descriptor*)&t, fr.val, &fr.width, NULL);
+		pio_output_float((text_descriptor*)&t, fr.val, &fr.width, NULL);
 		return t;
 	}
 	friend format_real format(real val, int width) {
@@ -593,7 +596,7 @@ private:
 
 public:
 	friend class text& operator << (class text& t, format_real_wp const& fr) {
-		pio_output_real((text_descriptor*)&t, fr.val, &fr.width, &fr.prec);
+		pio_output_float((text_descriptor*)&t, fr.val, &fr.width, &fr.prec);
 		return t;
 	}
 	friend format_real_wp format(real val, int width, int prec) {
