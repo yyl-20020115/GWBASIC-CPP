@@ -80,6 +80,13 @@ class text;
 template<integer low_bound, integer high_bound, class Type>
 class array {
 public:
+	friend size_t low(const array& a) {
+		return 0;
+	}
+	friend size_t high(const array& a) {
+		return a.size()-1;
+	}
+public:
 	Type buf[high_bound - low_bound + 1];
 
 	enum array_bounds {

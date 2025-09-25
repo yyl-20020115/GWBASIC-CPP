@@ -10,9 +10,6 @@ integer round(real x)
 {
 	return x >= 0 ? trunc(x + 0.5) : trunc(x - 0.5);
 }
-size_t length(string& s) {
-	return s.length();
-}
 void flush() {
 
 }

@@ -110,11 +110,11 @@ static void handle_error(file_descriptor* fd)
 	{
 		if (fd->error == IO_FORMAT_ERROR) {
 			fprintf(stderr, "IO: _input format error in file '%s'\n",
-				fd->name ? fd->name : "_input");
+				fd->name ? fd->name : "input");
 		}
 		else if (fd->error == IO_EOF) {
 			fprintf(stderr, "IO: access beyond end of file '%s'\n",
-				fd->name ? fd->name : "_input");
+				fd->name ? fd->name : "input");
 		}
 		else {
 			if (fd->name) {
@@ -916,7 +916,7 @@ void pio_output_real(text_descriptor* td, real val, const int* width,
 void pio_output_integer(text_descriptor* td, integer val, const int* width)
 {
 	if (width == NULL) {
-		fprintf(td->desc.f, "%7d", val);
+		fprintf(td->desc.f, "%d", val);
 	}
 	else if (*width < 0) {
 		fprintf(td->desc.f, "%*o", -*width, val);
@@ -929,7 +929,7 @@ void pio_output_integer(text_descriptor* td, integer val, const int* width)
 void pio_output_unsigned(text_descriptor* td, unsigned val, const int* width)
 {
 	if (width == NULL) {
-		fprintf(td->desc.f, "%7u", val);
+		fprintf(td->desc.f, "%u", val);
 	}
 	else if (*width < 0) {
 		fprintf(td->desc.f, "%*o", -*width, val);
@@ -943,7 +943,7 @@ void pio_output_unsigned(text_descriptor* td, unsigned val, const int* width)
 void pio_output_long(text_descriptor* td, long val, const int* width)
 {
 	if (width == NULL) {
-		fprintf(td->desc.f, "%7ld", val);
+		fprintf(td->desc.f, "%ld", val);
 	}
 	else if (*width < 0) {
 		fprintf(td->desc.f, "%*o", -*width, val);
@@ -956,7 +956,7 @@ void pio_output_long(text_descriptor* td, long val, const int* width)
 void pio_output_ulong(text_descriptor* td, unsigned long val, const int* width)
 {
 	if (width == NULL) {
-		fprintf(td->desc.f, "%7ul", val);
+		fprintf(td->desc.f, "%ul", val);
 	}
 	else if (*width < 0) {
 		fprintf(td->desc.f, "%*o", -*width, val);
