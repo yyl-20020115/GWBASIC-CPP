@@ -327,11 +327,9 @@ public:
 
 #define as(type, str) array<type::low, type::high, char>::make(str)
 
-
-
 #ifdef TURBO_PASCAL
 
-inline int length(const char* str) { return strlen(str); }
+inline size_t length(const char* str) { return strlen(str); }
 
 #ifndef MAX_STRING_SIZE
 #define MAX_STRING_SIZE 255
@@ -666,6 +664,10 @@ inline void str(unsigned val, varying_string<max_size>& s) {
 template<size_t max_size>
 inline void str(unsigned long val, varying_string<max_size>& s) {
 	s.set_length(sprintf(s.body, "%lu", val));
+}
+template<size_t max_size>
+inline void str(long long val, varying_string<max_size>& s) {
+	s.set_length(sprintf(s.body, "%lld", val));
 }
 
 template<size_t max_size>

@@ -26,7 +26,7 @@ double sqrt(double);
  */
 
 
-#define trunc(x)  ((integer)(x))
+//#define trunc(x)  ((integer)(x))
 
 #define pred(type,x) ((type)((x) - 1))
 

@@ -29,10 +29,10 @@ real get_realtime()
 	return (real)(tmp->tm_hour + tmp->tm_min / 60.0);
 }
 
-integer round(real x)
-{
-	return x >= 0 ? trunc(x + 0.5) : trunc(x - 0.5);
-}
+//integer round(real x)
+//{
+//	return x >= 0 ? trunc(x + 0.5) : trunc(x - 0.5);
+//}
 
 #define CIRCULAR_BUFFER_SIZE  4096
 

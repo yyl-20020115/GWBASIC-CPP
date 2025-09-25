@@ -17,20 +17,18 @@ typedef int           integer;
 typedef unsigned      cardinal; /* unsigned integer */
 typedef float         real;
 typedef real		  single; /* single precision floating point */
-
-#ifdef TURBO_PASCAL
-typedef long           longint;
+typedef long long      longint;
 typedef unsigned       word; /* It should have the same size as integer */ 
 typedef unsigned char  byte; 
 typedef signed char    shortint; 
 typedef void*          pointer;
 typedef const char*    asciiz;
-#endif               
 
 typedef unsigned char boolean; 
+#ifndef __cplusplus
 #define true          (1)
 #define false         (0)
-
+#endif
 #define nil           NULL
 
 #define EXTERN        extern

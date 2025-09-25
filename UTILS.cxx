@@ -1,15 +1,16 @@
 #include "GWBASIC.h"
 #include <stdio.h>
 #include <direct.h>  
+#include <corecrt_math.h>
 text output;
 text input;
 byte x = 1, y = 1;
 byte fc = 1, bc = 1;
 byte tm = C80;
-integer round(real x)
-{
-	return x >= 0 ? trunc(x + 0.5) : trunc(x - 0.5);
-}
+//integer round(real x)
+//{
+//	return x >= 0 ? trunc(x + 0.5) : trunc(x - 0.5);
+//}
 void window(byte x, byte y, byte w, byte h) {
 	//NOTICE:
 }
@@ -21,13 +22,6 @@ void getdir(int i, string& s) {
 }
 float frac(float v) {
 	return v - (integer)v;
-}
-
-void sound(int f) {
-	//TODO:azsx bbbb bbb        
-}
-void nosound() {
-	//TODO:
 }
 void chdir(string& path) {
 	//NOTICE:
