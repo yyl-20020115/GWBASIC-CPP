@@ -916,7 +916,7 @@ void pio_output_double(text_descriptor* td, double val, const int* width,
 	const int* prec)
 {
 	if (prec == NULL && width == NULL) {
-		fprintf(td->desc.f, "%G", val);
+		fprintf(td->desc.f, "%lf", val);
 	}
 	else if (prec != NULL && width != NULL) {
 		if (*prec < 0) {

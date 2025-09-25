@@ -690,7 +690,8 @@ inline void str(unsigned long val, int width, varying_string<max_size>& s) {
 
 template<size_t max_size>
 inline void str(double val, varying_string<max_size>& s) {
-	s.set_length(sprintf(s.body, "% G", val));
+	int n = sprintf(s.body, "%lf", val);
+	s.set_length(n);
 }
 
 template<size_t max_size>
@@ -789,6 +790,30 @@ inline void val(string const& str, integer& val, word& c)
 {
 	int x, n;
 	if (sscanf(str.body, "%d%n", &x, &n) == 1) {
+		val = x;
+		c = (n == str.length()) ? 0 : n + 1;
+	}
+	else {
+		c = 1;
+	}
+}
+inline void val(string const& str, double& val, integer& c)
+{
+	double x;
+	int    n;
+	if (sscanf(str.body, "%lf%n", &x, &n) == 1) {
+		val = x;
+		c = (n == str.length()) ? 0 : n + 1;
+	}
+	else {
+		c = 1;
+	}
+}
+inline void val(string const& str, double& val, word& c)
+{
+	double x;
+	int    n;
+	if (sscanf(str.body, "%lf%n", &x, &n) == 1) {
 		val = x;
 		c = (n == str.length()) ? 0 : n + 1;
 	}

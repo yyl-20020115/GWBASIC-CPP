@@ -269,6 +269,9 @@ int wherex (void);
  */
 int wherey (void);
 
+int screen_height(void);
+int screen_width(void);
+
 /**
  * Reads password. This function behaves like cgets.
  *

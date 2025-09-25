@@ -318,7 +318,16 @@ wherey (void)
     __fill_text_info();
     return __text_info.cury;
 }
-
+int screen_width(void)
+{
+    __fill_text_info();
+    return __text_info.screenwidth;
+}
+int screen_height(void)
+{
+    __fill_text_info();
+    return __text_info.screenheight;
+}
 char *
 getpass (const char * prompt, char * str)
 {
