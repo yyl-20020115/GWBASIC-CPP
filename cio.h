@@ -135,6 +135,9 @@ extern "C" {
 	void pio_output_ulong(text_descriptor* td, unsigned long val,
 		const int* width);
 
+	void pio_output_ulonglong(text_descriptor* td, unsigned long long val,
+		const int* width);
+
 	void pio_output_char(text_descriptor* td, char val, const int* width);
 
 	void pio_output_boolean(text_descriptor* td, boolean val,
@@ -454,6 +457,11 @@ public:
 	text& operator << (int x)
 	{
 		pio_output_integer((text_descriptor*)this, x, NULL);
+		return *this;
+	}
+	text& operator << (size_t x)
+	{
+		pio_output_ulonglong((text_descriptor*)this, x, NULL);
 		return *this;
 	}
 

@@ -19,9 +19,6 @@ void flush() {
 void window(byte x, byte y, byte w, byte h) {
 	//NOTICE:
 }
-void textbackground(byte color) {
-	bc = color;
-}
 void getdir(int i, string& s) {
 	//NOTICE:
 	s = ('C' + i);
@@ -33,7 +30,7 @@ float frac(float v) {
 }
 
 void sound(int f) {
-	//TODO:
+	//TODO:azsx bbbb bbb        
 }
 void nosound() {
 	//TODO:

@@ -15,15 +15,14 @@
 #define C40 1
 #define C80 3
 
-//TODO: Implement the following functions/macros
-#define blockread(f, buf, size, read) 
-#define format(a,b,c) ("")
+#define blockread(f, buf, size, read) BlockRead(f,(void*)buf,size,read)
+
+#define format(a,b,c) (a)
 
 size_t length(string& s);
 
 void flush();
 void window(byte x, byte y, byte w, byte h);
-void textbackground(byte color);
 void getdir(int i, string& s);
 float frac(float v);
 void sound(int f);

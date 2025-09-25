@@ -101,7 +101,9 @@ public:
 	Type const* body() const { return buf; }
 
 	Type& operator*() { return *buf; }
-
+	Type* operator->() {
+		return buf;
+	}
 #ifndef TURBO_PASCAL
 	operator conf_array<Type>() const { /* Convert to dynamic_array */
 		return conf_array<Type>(low_bound, high_bound, (Type*)buf);

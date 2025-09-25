@@ -926,6 +926,59 @@ void pio_output_integer(text_descriptor* td, integer val, const int* width)
 	}
 	postoutput(td);
 }
+void pio_output_unsigned(text_descriptor* td, unsigned val, const int* width)
+{
+	if (width == NULL) {
+		fprintf(td->desc.f, "%7u", val);
+	}
+	else if (*width < 0) {
+		fprintf(td->desc.f, "%*o", -*width, val);
+	}
+	else {
+		fprintf(td->desc.f, "%*u", *width, val);
+	}
+	postoutput(td);
+}
+
+void pio_output_long(text_descriptor* td, long val, const int* width)
+{
+	if (width == NULL) {
+		fprintf(td->desc.f, "%7ld", val);
+	}
+	else if (*width < 0) {
+		fprintf(td->desc.f, "%*o", -*width, val);
+	}
+	else {
+		fprintf(td->desc.f, "%*ld", *width, val);
+	}
+	postoutput(td);
+}
+void pio_output_ulong(text_descriptor* td, unsigned long val, const int* width)
+{
+	if (width == NULL) {
+		fprintf(td->desc.f, "%7ul", val);
+	}
+	else if (*width < 0) {
+		fprintf(td->desc.f, "%*o", -*width, val);
+	}
+	else {
+		fprintf(td->desc.f, "%*ul", *width, val);
+	}
+	postoutput(td);
+}
+void pio_output_ulonglong(text_descriptor* td, unsigned long long val, const int* width)
+{
+	if (width == NULL) {
+		fprintf(td->desc.f, "%llu", val);
+	}
+	else if (*width < 0) {
+		fprintf(td->desc.f, "%*llo", -*width, val);
+	}
+	else {
+		fprintf(td->desc.f, "%*llu", *width, val);
+	}
+	postoutput(td);
+}
 
 void pio_output_char(text_descriptor* td, char val, const int* width)
 {
