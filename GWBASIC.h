@@ -17,10 +17,6 @@
 
 #define blockread(f, buf, size, read) BlockRead(f,(void*)buf,size,read)
 
-void window(byte x, byte y, byte w, byte h);
-void getdir(int i, string& s);
-float frac(float v);
 void erase(untyped_file& f);
-void textmode(byte mode);
 int doserror();
 #endif
