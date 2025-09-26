@@ -20,11 +20,7 @@
 void window(byte x, byte y, byte w, byte h);
 void getdir(int i, string& s);
 float frac(float v);
-void chdir(string& path);
-void mkdir(string& path);
-void rmdir(string& path);
 void erase(untyped_file& f);
 void textmode(byte mode);
 int doserror();
-size_t diskfree(byte drive);
 #endif
